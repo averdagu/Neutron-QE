@@ -44,10 +44,9 @@ parameter_defaults:
     InternalApiNetworkVlanID: 1185
     NeutronEnableDVR: 'false'
     NeutronExternalNetworkBridge: ''
-    NeutronFlatNetworks: leaf0,leaf1,leaf2
-    NeutronNetworkType: 'geneve,vlan'
+    NeutronNetworkType: ['geneve','vlan']
     NeutronNetworkVLANRanges: leaf0:1:1000,leaf1:1:1000,leaf2:1:1000
-    NeutronTunnelTypes: 'geneve,vlan'
+    NeutronTunnelTypes: geneve
     NeutronTypeDrivers: 'geneve,vlan'
     NovaComputeAvailabilityZone: az-central
     NovaComputeLibvirtType: qemu
