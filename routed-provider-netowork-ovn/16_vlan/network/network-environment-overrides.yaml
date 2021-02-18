@@ -1,6 +1,6 @@
 ---
 parameter_defaults:
-    NeutronNetworkType: 'geneve,vlan'
+    NeutronNetworkType: ['geneve','vlan']
     NeutronNetworkVLANRanges: leaf0:1:1000,leaf1:1:1000,leaf2:1:1000
-    NeutronTunnelTypes: 'geneve,vlan'
+    NeutronTunnelTypes: geneve
     NeutronTypeDrivers: 'geneve,vlan'
