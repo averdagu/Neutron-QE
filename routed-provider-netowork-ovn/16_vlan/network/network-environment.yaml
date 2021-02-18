@@ -45,7 +45,7 @@ parameter_defaults:
     NeutronEnableDVR: 'false'
     NeutronExternalNetworkBridge: ''
     NeutronNetworkType: ['geneve','vlan']
-    NeutronNetworkVLANRanges: leaf0:500:600,leaf1:601:700,leaf2:701:800
+    NeutronNetworkVLANRanges: leaf0:1:1000,leaf1:1:1000,leaf2:1:1000
     NeutronTunnelTypes: 'geneve,vlan'
     NeutronTypeDrivers: 'geneve,vlan'
     NovaComputeAvailabilityZone: az-central
