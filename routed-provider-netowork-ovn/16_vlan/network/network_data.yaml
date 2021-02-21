@@ -3,9 +3,9 @@
   name_lower: external
   vip: true
   vlan: 10
-  ip_subnet: '10.0.10.0/24'
-  allocation_pools: [{'start': '10.0.10.100', 'end': '10.0.10.149'}]
-  gateway_ip: '10.0.10.1'
+  ip_subnet: '10.10.10.0/24'
+  allocation_pools: [{'start': '10.10.10.100', 'end': '10.10.10.149'}]
+  gateway_ip: '10.10.10.1'
   subnets:
     external_leaf1:
       vlan: 20
