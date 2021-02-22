@@ -2,6 +2,7 @@ parameter_defaults:
     BondInterfaceOvsOptions: bond_mode=active-backup
     #Enable isolated metadata for provider networks
     NeutronEnableIsolatedMetadata: 'True'
+    NeutronFlatNetworks: leaf0,leaf1,leaf2
     Compute0Parameters:
         NeutronBridgeMappings:
         - leaf0:br-ex
