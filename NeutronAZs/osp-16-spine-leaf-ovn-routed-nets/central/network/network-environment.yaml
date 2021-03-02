@@ -1,0 +1,63 @@
+resource_registry:
+  OS::TripleO::Controller0::Net::SoftwareConfig: spine-leaf-nics/controller0.yaml
+  OS::TripleO::Compute::Net::SoftwareConfig: spine-leaf-nics/compute0.yaml
+  OS::TripleO::Services::Docker: OS::Heat::None
+  OS::TripleO::Services::NovaAZConfig: /usr/share/openstack-tripleo-heat-templates/deployment/nova/nova-az-config.yaml
+  OS::TripleO::Network::Ports::OVNDBsVipPort: /usr/share/openstack-tripleo-heat-templates/network/ports/noop.yaml
+  OS::TripleO::Network::Ports::RedisVipPort: /usr/share/openstack-tripleo-heat-templates/network/ports/noop.yaml
+
+
+parameter_defaults:
+  NeutronEnableIsolatedMetadata: 'True'
+  ControlPlaneSubnet: leaf0
+  VipSubnetMap:
+    ctlplane: leaf0
+  NeutronFlatNetworks: leaf0,leaf1,leaf2
+  Controller0Parameters:
+    NeutronBridgeMappings: ["leaf0:br-ex"]
+  ComputeParameters:
+    NeutronBridgeMappings: ["leaf0:br-ex"]
+  PythonInterpreter: /usr/bin/python3
+  NovaComputeLibvirtType: qemu
+  DnsServers: ['10.11.5.19', '10.5.30.160']
+  NtpServer: ["clock.redhat.com","clock2.redhat.com"]
+  NovaComputeAvailabilityZone: az-central
+  NovaCrossAZAttach: False
+  Controller0ExtraConfig:
+      nova::availability_zone::default_schedule_zone: az-central
+      controller_classes:
+        - ::nova::availability_zone
+  RootStackName: central
+  NeutronEnableDVR: 'false'
+  NeutronExternalNetworkBridge: ''
+  NeutronNetworkType: 'geneve'
+  NeutronTunnelTypes: 'geneve'
+  NeutronTypeDrivers: 'geneve,vlan'
+  NeutronNetworkVLANRanges: 'leaf0:1:1000,leaf1:1:1000,leaf2:1:1000'
+  BondInterfaceOvsOptions: "bond_mode=active-backup"
+
+  ExternalNetCidr: '10.0.10.0/24'
+  ExternalAllocationPools: [{'start': '10.0.10.150', 'end': '10.0.10.169'}]
+  ExternalInterfaceDefaultRoute: '10.0.10.1'
+  ExternalNetworkVlanID: 10
+
+  StorageNetCidr: '172.23.1.0/24'
+  StorageAllocationPools: [{'start': '172.23.1.4', 'end': '172.23.1.250'}]
+  StorageInterfaceDefaultRoute: '172.23.1.254'
+  StorageNetworkVlanID: 1183
+
+  StorageMgmtNetCidr: '172.18.1.0/24'
+  StorageMgmtAllocationPools: [{'start': '172.18.1.4', 'end': '172.18.1.250'}]
+  StorageMgmtInterfaceDefaultRoute: '172.18.1.254'
+  StorageMgmtNetworkVlanID: 1188
+
+  InternalApiNetCidr: '172.25.1.0/24'
+  InternalApiAllocationPools: [{'start': '172.25.1.4', 'end': '172.25.1.250'}]
+  InternalApiInterfaceDefaultRoute: '172.25.1.254'
+  InternalApiNetworkVlanID: 1185
+
+  TenantNetCidr: '172.19.1.0/24'
+  TenantAllocationPools: [{'start': '172.19.1.4', 'end': '172.19.1.250'}]
+  TenantInterfaceDefaultRoute: '172.19.1.254'
+  TenantNetworkVlanID: 1189
+  TenantNetPhysnetMtu: 1500

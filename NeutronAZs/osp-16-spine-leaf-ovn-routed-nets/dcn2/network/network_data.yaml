@@ -1,0 +1,68 @@
+# External
+- name: External
+  name_lower: external
+  vip: false
+  vlan: 10
+  ip_subnet: '10.0.10.0/24'
+  allocation_pools: [{'start': '10.0.10.150', 'end': '10.0.10.169'}]
+  gateway_ip: '10.0.10.1'
+
+# Storage
+- name: Storage
+  name_lower: storage
+  vip: true
+  vlan: 1183
+  ip_subnet: '172.23.1.0/24'
+  allocation_pools: [{'start': '172.23.1.4', 'end': '172.23.1.250'}]
+  gateway_ip: '172.23.1.254'
+  subnets:
+    storage_leaf2:
+      vlan: 1163
+      ip_subnet: '172.23.3.0/24'
+      allocation_pools: [{'start': '172.23.3.4', 'end': '172.23.3.250'}]
+      gateway_ip: '172.23.3.254'
+
+# StorageMgmt
+- name: StorageMgmt
+  name_lower: storage_mgmt
+  vip: true
+  vlan: 1188
+  ip_subnet: '172.18.1.0/24'
+  allocation_pools: [{'start': '172.18.1.4', 'end': '172.18.1.250'}]
+  gateway_ip: '172.18.1.254'
+  subnets:
+    storage_mgmt_leaf2:
+      vlan: 1168
+      ip_subnet: '172.18.3.0/24'
+      allocation_pools: [{'start': '172.18.3.4', 'end': '172.18.3.250'}]
+      gateway_ip: '172.18.3.254'
+
+# Internal API
+- name: InternalApi
+  name_lower: internal_api
+  vip: true
+  vlan: 1185
+  ip_subnet: '172.25.1.0/24'
+  allocation_pools: [{'start': '172.25.1.4', 'end': '172.25.1.250'}]
+  gateway_ip: '172.25.1.254'
+  subnets:
+    internal_api_leaf2:
+      vlan: 1165
+      ip_subnet: '172.25.3.0/24'
+      allocation_pools: [{'start': '172.25.3.4', 'end': '172.25.3.250'}]
+      gateway_ip: '172.25.3.254'
+
+# Tenant
+- name: Tenant
+  name_lower: tenant
+  vip: false  # Tenant network does not use VIPs
+  vlan: 1189
+  ip_subnet: '172.19.1.0/24'
+  allocation_pools: [{'start': '172.19.1.4', 'end': '172.19.1.250'}]
+  gateway_ip: '172.19.1.254'
+  subnets:
+    tenant_leaf2:
+      vlan: 1169
+      ip_subnet: '172.19.3.0/24'
+      allocation_pools: [{'start': '172.19.3.4', 'end': '172.19.3.250'}]
+      gateway_ip: '172.19.3.254'
