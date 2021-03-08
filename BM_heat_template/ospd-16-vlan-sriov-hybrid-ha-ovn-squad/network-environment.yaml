@@ -86,3 +86,4 @@ parameter_defaults:
   ###add placement service plugin###
   NeutronServicePlugins: 'qos,ovn-router,trunk,segments,placement'
   NeutronSriovResourceProviderBandwidths: 'enp7s0f3:10000000:10000000,enp5s0f0:10000000:10000000'
+  NeutronSriovAgentExtensions: 'qos'
