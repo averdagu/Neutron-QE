@@ -30,6 +30,10 @@ parameter_defaults:
   RootStackName: central
   NeutronEnableDVR: 'false'
   NeutronExternalNetworkBridge: ''
+  NeutronMechanismDrivers: 'openvswitch'
+  NeutronRouterSchedulerDriver: 'neutron.scheduler.l3_agent_scheduler.AZLeastRoutersScheduler'
+  NeutronNetworkSchedulerDriver: 'neutron.scheduler.dhcp_agent_scheduler.AZAwareWeightScheduler'
+  NeutronDhcpLoadType: 'networks'
   NeutronNetworkType: 'vxlan'
   NeutronTunnelTypes: 'vxlan'
   NeutronL3AgentAvailabilityZone: az-central
