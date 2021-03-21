@@ -25,6 +25,8 @@ parameter_defaults:
   NovaCrossAZAttach: False
   Controller0ExtraConfig:
       nova::availability_zone::default_schedule_zone: az-central
+      neutron::agents::dhcp::availability_zone: az-central
+      neutron::agents::l3::availability_zone: az-central
       controller_classes:
         - ::nova::availability_zone
   RootStackName: central
@@ -37,6 +39,7 @@ parameter_defaults:
   NeutronNetworkType: 'vxlan'
   NeutronTunnelTypes: 'vxlan'
   NeutronL3AgentAvailabilityZone: az-central
+  NeutronDefaultAvailabilityZones: az-central
   NeutronDhcpAgentAvailabilityZone: az-central
   NeutronNetworkVLANRanges: 'leaf0:1:1000,leaf1:1:1000,leaf2:1:1000'
   BondInterfaceOvsOptions: "bond_mode=active-backup"

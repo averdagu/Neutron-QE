@@ -23,6 +23,9 @@ parameter_defaults:
   NovaComputeAvailabilityZone: az-dcn2
   NeutronL3AgentAvailabilityZone: az-dcn2
   NeutronDhcpAgentAvailabilityZone: az-dcn2
+  NeutronDefaultAvailabilityZones: az-dcn2
+  Compute2ExtraConfig:
+    neutron::agents::dhcp::availability_zone: az-dcn2
   NeutronMechanismDrivers: 'openvswitch'
   NeutronRouterSchedulerDriver: 'neutron.scheduler.l3_agent_scheduler.AZLeastRoutersScheduler'
   NeutronNetworkSchedulerDriver: 'neutron.scheduler.dhcp_agent_scheduler.AZAwareWeightScheduler'
