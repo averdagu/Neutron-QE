@@ -39,7 +39,7 @@ parameter_defaults:
   NeutronNetworkType: 'vxlan'
   NeutronTunnelTypes: 'vxlan'
   NeutronL3AgentAvailabilityZone: az-central
-  NeutronDefaultAvailabilityZones: az-central
+  NeutronDefaultAvailabilityZones: 'az-central,az-dcn2,az-dcn1'
   NeutronDhcpAgentAvailabilityZone: az-central
   NeutronNetworkVLANRanges: 'leaf0:1:1000,leaf1:1:1000,leaf2:1:1000'
   BondInterfaceOvsOptions: "bond_mode=active-backup"

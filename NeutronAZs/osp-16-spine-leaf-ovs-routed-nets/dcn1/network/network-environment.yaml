@@ -22,7 +22,7 @@ parameter_defaults:
   NtpServer: ["clock.redhat.com","clock2.redhat.com"]
   NovaComputeAvailabilityZone: az-dcn1
   NeutronL3AgentAvailabilityZone: az-dcn1
-  NeutronDefaultAvailabilityZones: az-dcn1
+  NeutronDefaultAvailabilityZones: 'az-central,az-dcn2,az-dcn1'
   NeutronDhcpAgentAvailabilityZone: az-dcn1
   Compute1ExtraConfig:
     neutron::agents::dhcp::availability_zone: az-dcn1
