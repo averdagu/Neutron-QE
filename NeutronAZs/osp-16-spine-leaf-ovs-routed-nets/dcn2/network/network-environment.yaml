@@ -1,6 +1,7 @@
 resource_registry:
   OS::TripleO::Controller0::Net::SoftwareConfig: spine-leaf-nics/controller0.yaml
   OS::TripleO::Compute2::Net::SoftwareConfig: spine-leaf-nics/compute2.yaml
+  OS::TripleO::Compute3::Net::SoftwareConfig: spine-leaf-nics/compute2.yaml
   OS::TripleO::Services::Docker: OS::Heat::None
   OS::TripleO::Services::NovaAZConfig: /usr/share/openstack-tripleo-heat-templates/deployment/nova/nova-az-config.yaml
   OS::TripleO::Network::Ports::RedisVipPort: /usr/share/openstack-tripleo-heat-templates/network/ports/noop.yaml
@@ -16,6 +17,8 @@ parameter_defaults:
     NeutronBridgeMappings: ["leaf0:br-ex"]
   Compute2Parameters:
     NeutronBridgeMappings: ["leaf2:br-ex"]
+  Compute3Parameters:
+    NeutronBridgeMappings: ["leaf2:br-ex"]
   PythonInterpreter: /usr/bin/python3
   NovaComputeLibvirtType: qemu
   DnsServers: ['10.11.5.19', '10.5.30.160']
@@ -25,6 +28,8 @@ parameter_defaults:
   NeutronDhcpAgentAvailabilityZone: az-dcn2
   NeutronDefaultAvailabilityZones: az-dcn2
   Compute2ExtraConfig:
+    neutron::agents::dhcp::availability_zone: az-dcn2
+  Compute3ExtraConfig:
     neutron::agents::dhcp::availability_zone: az-dcn2
   NeutronMechanismDrivers: 'openvswitch'
   NeutronRouterSchedulerDriver: 'neutron.scheduler.l3_agent_scheduler.AZLeastRoutersScheduler'
