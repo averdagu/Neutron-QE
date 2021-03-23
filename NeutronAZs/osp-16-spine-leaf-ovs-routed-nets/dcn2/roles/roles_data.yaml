@@ -69,8 +69,6 @@
     - OS::TripleO::Services::Vpp
     - OS::TripleO::Services::OVNController
     - OS::TripleO::Services::OVNMetadataAgent
-    - OS::TripleO::Services::NeutronDhcpAgent
-    - OS::TripleO::Services::NeutronMetadataAgent
 
 - name: Compute3
   description: |
@@ -114,8 +112,6 @@
     - OS::TripleO::Services::Multipathd
     - OS::TripleO::Services::MySQLClient
     - OS::TripleO::Services::NeutronBgpVpnBagpipe
-    - OS::TripleO::Services::NeutronDhcpAgent
-    - OS::TripleO::Services::NeutronMetadataAgent
     - OS::TripleO::Services::NeutronLinuxbridgeAgent
     - OS::TripleO::Services::NeutronVppAgent
     - OS::TripleO::Services::NovaCompute
