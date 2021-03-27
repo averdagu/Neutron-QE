@@ -15,6 +15,7 @@ parameter_defaults:
   NeutronFlatNetworks: leaf0,leaf1,leaf2
   Controller0Parameters:
     NeutronBridgeMappings: ["leaf0:br-ex"]
+    OVNCMSOptions: "enable-chassis-as-gw,availability-zones=az-central"
   ComputeParameters:
     NeutronBridgeMappings: ["leaf0:br-ex"]
   PythonInterpreter: /usr/bin/python3
@@ -23,6 +24,11 @@ parameter_defaults:
   NtpServer: ["clock.redhat.com","clock2.redhat.com"]
   NovaComputeAvailabilityZone: az-central
   NovaCrossAZAttach: False
+  NetworkerParameters:
+    OVNCMSOptions: "enable-chassis-as-gw,availability-zones=az-dcn1"
+  NeutronDefaultAvailabilityZones: az-central,az-dcn1
+  NeutronNetworkSchedulerDriver: neutron.scheduler.dhcp_agent_scheduler.AZAwareWeightScheduler
+  NeutronRouterSchedulerDriver: neutron.scheduler.l3_agent_scheduler.AZLeastRoutersScheduler
   Controller0ExtraConfig:
       nova::availability_zone::default_schedule_zone: az-central
       controller_classes:
