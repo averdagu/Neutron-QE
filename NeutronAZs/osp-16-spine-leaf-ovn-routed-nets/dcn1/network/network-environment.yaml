@@ -25,7 +25,7 @@ parameter_defaults:
   NetworkerParameters:
     OVNCMSOptions: "enable-chassis-as-gw,availability-zones=az-dcn1"
     NeutronBridgeMappings: ["leaf1:br-ex"]
-  NeutronDefaultAvailabilityZones: az-central,az-dcn1
+  NeutronDefaultAvailabilityZones: az-central,az-dcn1,az-dcn2
   NeutronNetworkSchedulerDriver: neutron.scheduler.dhcp_agent_scheduler.AZAwareWeightScheduler
   NeutronRouterSchedulerDriver: neutron.scheduler.l3_agent_scheduler.AZLeastRoutersScheduler
   NovaCrossAZAttach: False

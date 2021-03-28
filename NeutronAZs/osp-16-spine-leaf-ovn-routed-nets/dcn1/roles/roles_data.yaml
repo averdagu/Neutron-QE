@@ -72,7 +72,7 @@
 ###############################################################################
 # Role: Networker                                                             #
 ###############################################################################
-- name: Networker
+- name: Networker1
   description: |
     Standalone networking role to run Neutron agents on their own.
   networks:
@@ -82,7 +82,7 @@
       subnet: tenant_leaf1
   tags:
     - external_bridge
-  HostnameFormatDefault: "%stackname%-networker-%index%"
+  HostnameFormatDefault: "%stackname%-networker1-%index%"
   update_serial: 1
   ServicesDefault:
     - OS::TripleO::Services::Aide
