@@ -77,12 +77,12 @@
     Standalone networking role to run Neutron agents on their own.
   networks:
     InternalApi:
-      subnet: internal_api_subnet
+      subnet: internal_api_leaf1
     Tenant:
-      subnet: tenant_subnet
+      subnet: tenant_leaf1
   tags:
     - external_bridge
-  HostnameFormatDefault: "networker-%index%"
+  HostnameFormatDefault: "%stackname%-networker-%index%"
   update_serial: 1
   ServicesDefault:
     - OS::TripleO::Services::Aide
