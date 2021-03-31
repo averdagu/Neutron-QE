@@ -61,7 +61,8 @@ else
     openstack network create ovn-migration-net-{{ resource_suffix }}
 fi
 
-neutron net-update ovn-migration-net-{{ resource_suffix }} --mtu 1442
+# (rsafrono) In most cases customers will use default ML2/OVS MTU rather then Geneve-suitable value
+# neutron net-update ovn-migration-net-{{ resource_suffix }} --mtu 1442
 
 openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  --subnet-range 192.168.168.0/24 ovn-migration-subnet-{{ resource_suffix }}
 
