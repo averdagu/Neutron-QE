@@ -72,6 +72,7 @@
             is_dvr: "{{ install.dvr }}"
             is_sriov: "{{ install.sriov }}"
             support_jumbo_mtu: "{{ install.jumbo_mtu }}"
+            has_networker: "{{ install.networker }}"
         when: install is defined
 
       - name: Set necessary facts (Tripleo deployment)
@@ -80,6 +81,7 @@
             is_dvr: "{{ dvr }}"
             is_sriov: "{{ sriov }}"
             support_jumbo_mtu: "{{ jumbo_mtu }}"
+            has_networker: "{{ networker }}"
         when: install is not defined
 
       - name: Set overcloudrc

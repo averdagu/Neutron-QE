@@ -132,3 +132,8 @@ subparsers:
                       type: Bool
                       help: Whether target environment should support jumbo MTU.
                       default: False
+
+                  networker:
+                      type: Bool
+                      help: Whether environment has standalone networkers.
+                      default: False

@@ -153,6 +153,22 @@
       - infrared_deployment|bool
       - support_jumbo_mtu|bool
 
+- name: Remove OVNCMSOptions for controller nodes in case we have networkers
+  command: |
+      sed -i '/ControllerParameters/,+1 d' "{{ neutron_ovn_env_path }}"
+  become: yes
+  when:
+      - infrared_deployment|bool
+      - has_networker|bool
+
+- name: Enable networker chassis as gateway for composable deployments
+  shell: |
+      echo "  NetworkerParameters:" >> /home/stack/neutron_bridge_mappings.yaml
+      echo "    OVNCMSOptions: enable-chassis-as-gw" >> /home/stack/neutron_bridge_mappings.yaml
+  when:
+      - infrared_deployment|bool
+      - has_networker|bool
+
 - name: Get roles data file for infrared SR-IOV deployments
   shell: |
       roles_file=$(grep '\-r\ ' /home/stack/overcloud-deploy-ovn.sh | sed 's/.*-r\ \(.*\)\ .*/\1/')
