@@ -1,6 +1,6 @@
 resource_registry:
   OS::TripleO::Controller0::Net::SoftwareConfig: spine-leaf-nics/controller0.yaml
-  OS::TripleO::Networker::Net::SoftwareConfig: spine-leaf-nics/networker.yaml
+  OS::TripleO::Networker1::Net::SoftwareConfig: spine-leaf-nics/networker1.yaml
   OS::TripleO::Compute1::Net::SoftwareConfig: spine-leaf-nics/compute1.yaml
   OS::TripleO::Services::Docker: OS::Heat::None
   OS::TripleO::Services::NovaAZConfig: /usr/share/openstack-tripleo-heat-templates/deployment/nova/nova-az-config.yaml
