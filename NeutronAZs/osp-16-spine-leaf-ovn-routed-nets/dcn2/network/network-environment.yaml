@@ -35,7 +35,7 @@ parameter_defaults:
   NeutronExternalNetworkBridge: ''
   NeutronNetworkType: 'geneve'
   NeutronTunnelTypes: 'geneve'
-  NeutronTypeDrivers: 'geneve,vlan'
+  NeutronTypeDrivers: 'flat,geneve,vlan'
   NeutronNetworkVLANRanges: 'leaf0:1:1000,leaf2:1:1000'
   BondInterfaceOvsOptions: "bond_mode=active-backup"
 
