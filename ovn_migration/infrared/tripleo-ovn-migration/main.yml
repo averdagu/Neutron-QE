@@ -40,15 +40,6 @@
             value=False
         ignore_errors: yes
 
-      - name: Download updated ovn_migration.sh, temp fix
-        get_url:
-            url: http://file.tlv.redhat.com/~rsafrono/files/ovn_migration.sh
-            dest: /home/stack/ovn_migration.sh
-            mode: '0755'
-
-      - name: Update local ovn_migration.sh script, temp fix
-        command: cp -f /home/stack/ovn_migration.sh /usr/bin
-
 - name: Prepare for migration
   hosts: undercloud
   tasks:
