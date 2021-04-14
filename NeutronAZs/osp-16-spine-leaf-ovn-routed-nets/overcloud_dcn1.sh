@@ -2,7 +2,7 @@ source /home/stack/stackrc
 
 sudo cp overcloud_deploy.sh overcloud_deploy_dcn1.sh
 sudo cp /home/stack/central/config_lvm.yaml /home/stack/dcn1/config_lvm.yaml
-#sudo cp /home/stack/central/enable-tls.yaml /home/stack/dcn1/enable-tls.yaml
+sudo cp /home/stack/central/enable-tls.yaml /home/stack/dcn1/enable-tls.yaml
 sudo cp /home/stack/central/inject-trust-anchor.yaml /home/stack/dcn1/inject-trust-anchor.yaml
 sudo cp /home/stack/central/hostnames.yml /home/stack/dcn1/hostnames.yml
 sudo cp /home/stack/central/debug.yaml /home/stack/dcn1/debug.yaml
