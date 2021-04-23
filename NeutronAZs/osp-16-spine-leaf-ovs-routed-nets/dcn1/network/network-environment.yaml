@@ -1,6 +1,7 @@
 resource_registry:
   OS::TripleO::Controller0::Net::SoftwareConfig: spine-leaf-nics/controller0.yaml
   OS::TripleO::Compute1::Net::SoftwareConfig: spine-leaf-nics/compute1.yaml
+  OS::TripleO::Compute4::Net::SoftwareConfig: spine-leaf-nics/compute1.yaml
   OS::TripleO::Services::Docker: OS::Heat::None
   OS::TripleO::Services::NovaAZConfig: /usr/share/openstack-tripleo-heat-templates/deployment/nova/nova-az-config.yaml
   OS::TripleO::Network::Ports::RedisVipPort: /usr/share/openstack-tripleo-heat-templates/network/ports/noop.yaml
@@ -15,6 +16,8 @@ parameter_defaults:
   Controller0Parameters:
     NeutronBridgeMappings: ["leaf0:br-ex"]
   Compute1Parameters:
+    NeutronBridgeMappings: ["leaf1:br-ex"]
+  Compute4Parameters:
     NeutronBridgeMappings: ["leaf1:br-ex"]
   PythonInterpreter: /usr/bin/python3
   NovaComputeLibvirtType: qemu
