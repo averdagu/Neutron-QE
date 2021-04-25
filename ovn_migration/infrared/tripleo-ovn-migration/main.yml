@@ -282,12 +282,14 @@
                   src: templates/delete-resources.sh.j2
                   dest: "{{ ovn_migration_working_dir }}/delete-resources.sh"
                   mode: 0755
+              when: is_sriov|bool
 
             - name: Run resources cleanup script
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/delete-resources.sh
                   > {{ ovn_migration_working_dir }}/delete-resources.sh.log 2>&1
+              when: is_sriov|bool
 
 #        always:
 #            - name: Fetch ovn_migration log directory
