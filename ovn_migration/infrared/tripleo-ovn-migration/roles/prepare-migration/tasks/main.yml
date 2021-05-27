@@ -138,7 +138,7 @@
 - name: Create neutron_bridge_mappings.yaml file
   shell: |
       master_node=$(grep no_proxy {{ overcloudrc }} | tr ',' "\n" | grep "192.168\|ctlplane")
-      current_mappings=$(ssh heat-admin@$master_node 'sudo podman exec -it neutron_api crudini --get /etc/neutron/plugins/ml2/openvswitch_agent.ini ovs bridge_mappings' | tr -d "\r" )
+      current_mappings=$(ssh {{ overcloud_ssh_user }}@$master_node 'sudo podman exec -it neutron_api crudini --get /etc/neutron/plugins/ml2/openvswitch_agent.ini ovs bridge_mappings' | tr -d "\r" )
       echo "parameter_defaults:" > /home/stack/neutron_bridge_mappings.yaml
       echo "  ComputeParameters:" >> /home/stack/neutron_bridge_mappings.yaml
       echo "    NeutronBridgeMappings: \"$current_mappings\"" >> /home/stack/neutron_bridge_mappings.yaml

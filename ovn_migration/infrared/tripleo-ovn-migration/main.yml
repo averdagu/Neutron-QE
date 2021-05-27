@@ -60,6 +60,7 @@
       - name: Set necessary facts (infrared deployment)
         set_fact:
             stack_name: "{{ install.stack_name }}"
+            overcloud_ssh_user: "{{ install.overcloud_ssh_user }}"
             is_dvr: "{{ install.dvr }}"
             is_sriov: "{{ install.sriov }}"
             support_jumbo_mtu: "{{ install.jumbo_mtu }}"
@@ -69,6 +70,7 @@
       - name: Set necessary facts (Tripleo deployment)
         set_fact:
             stack_name: "{{ stack_name }}"
+            overcloud_ssh_user: "{{ overcloud_ssh_user }}"
             is_dvr: "{{ dvr }}"
             is_sriov: "{{ sriov }}"
             support_jumbo_mtu: "{{ jumbo_mtu }}"

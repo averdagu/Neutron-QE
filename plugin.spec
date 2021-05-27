@@ -128,6 +128,11 @@ subparsers:
                       help: Name of the stack to update
                       default: overcloud
 
+                  overcloud_ssh_user:
+                      type: Value
+                      help: SSH user for connecting to overcloud nodes
+                      default: heat-admin
+
                   jumbo_mtu:
                       type: Bool
                       help: Whether target environment should support jumbo MTU.
