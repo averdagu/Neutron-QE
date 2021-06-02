@@ -310,6 +310,13 @@
       - { name: ContainerOvnDbsImage, image_name: ovn-northd}
       - { name: ContainerOvnDbsConfigImage, image_name: ovn-northd}
 
+- name: "Change the neutron_driver in the containers-prepare-parameter.yaml file to ovn"
+  lineinfile:
+    path: ~/containers-prepare-parameter.yaml
+    regexp: "      neutron_driver: ovs"
+    line: "      neutron_driver: ovn"
+    state: present
+
 - name: Upload the ovn container images to the local registry
   shell: |
       source /home/stack/stackrc
