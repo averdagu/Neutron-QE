@@ -73,6 +73,10 @@
       neutron_ovn_env_path: /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-ha.yaml
   when: not is_dvr|bool
 
+- name: Set OVN extra configs file
+  set_fact:
+      ovn_extra_configs: '/home/stack/ovn-extra-configs.yaml'
+
 - name: Construct overcloud-deploy-ovn.sh script for infrared deployments
   lineinfile:
       dest: "{{ overcloud_deploy_ovn_script }}"
@@ -80,7 +84,7 @@
       insertbefore: "^--log-file.*"
   with_items:
       - "-e {{ neutron_ovn_env_path }}"
-      - "-e /home/stack/neutron_bridge_mappings.yaml"
+      - "-e {{ ovn_extra_configs }}"
       - "-e /home/stack/ovn-extras.yaml"
       - "-e {{ output_env_file }}"
   when:
@@ -95,7 +99,7 @@
       insertbefore: "^.*2>&1.*"
   with_items:
       - "-e {{ neutron_ovn_env_path }}"
-      - "-e /home/stack/neutron_bridge_mappings.yaml"
+      - "-e {{ ovn_extra_configs }}"
       - "-e /home/stack/ovn-extras.yaml"
       - "-e {{ output_env_file }}"
   when:
@@ -111,7 +115,7 @@
   with_items:
       - "-e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-ha.yaml"
       - "-e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-sriov.yaml"
-      - "-e /home/stack/neutron_bridge_mappings.yaml"
+      - "-e {{ ovn_extra_configs }}"
       - "-e /home/stack/ovn-extras.yaml"
       - "-e {{ output_env_file }}"
   when:
@@ -127,7 +131,7 @@
   with_items:
       - "-e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-ha.yaml"
       - "-e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-sriov.yaml"
-      - "-e /home/stack/neutron_bridge_mappings.yaml"
+      - "-e {{ ovn_extra_configs }}"
       - "-e /home/stack/ovn-extras.yaml"
       - "-e {{ output_env_file }}"
   when:
@@ -135,20 +139,40 @@
       - is_sriov|bool
       - is_after_ffu|bool
 
-- name: Create neutron_bridge_mappings.yaml file
+- name: Set current bridge mappings into OVN extra configs file
   shell: |
       master_node=$(grep no_proxy {{ overcloudrc }} | tr ',' "\n" | grep "192.168\|ctlplane")
       current_mappings=$(ssh {{ overcloud_ssh_user }}@$master_node 'sudo podman exec -it neutron_api crudini --get /etc/neutron/plugins/ml2/openvswitch_agent.ini ovs bridge_mappings' | tr -d "\r" )
-      echo "parameter_defaults:" > /home/stack/neutron_bridge_mappings.yaml
-      echo "  ComputeParameters:" >> /home/stack/neutron_bridge_mappings.yaml
-      echo "    NeutronBridgeMappings: \"$current_mappings\"" >> /home/stack/neutron_bridge_mappings.yaml
+      echo "parameter_defaults:" > {{ ovn_extra_configs }}
+      echo "  ComputeParameters:" >> {{ ovn_extra_configs }}
+      echo "    NeutronBridgeMappings: \"$current_mappings\"" >> {{ ovn_extra_configs }}
   when: infrared_deployment|bool
+
+- name: Add VLAN transparency
+  shell: |
+      echo "  EnableVLANTransparency: true" >> {{ ovn_extra_configs }}
+  when:
+      - infrared_deployment|bool
+      - has_vlan_transparency|bool
+
+- name: Add IGMP snooping
+  shell: |
+      echo "  NeutronEnableIgmpSnooping: true" >> {{ ovn_extra_configs }}
+  when:
+      - infrared_deployment|bool
+      - has_igmp_snooping|bool
+
+- name: Set Neutron DNS Domain
+  shell: |
+      echo "  NeutronDnsDomain: {{ neutron_dns_domain }}" >> {{ ovn_extra_configs }}
+  when:
+      - infrared_deployment|bool
 
 - name: Add settings for Jumbo MTU
   shell: |
-      echo "  OVNEmitNeedToFrag: True" >> /home/stack/neutron_bridge_mappings.yaml
-      echo "  ExtraConfig:" >> /home/stack/neutron_bridge_mappings.yaml
-      echo "    neutron::plugins::ml2::ovn::ovn_emit_need_to_frag: True" >> /home/stack/neutron_bridge_mappings.yaml
+      echo "  OVNEmitNeedToFrag: True" >> {{ ovn_extra_configs }}
+      echo "  ExtraConfig:" >> {{ ovn_extra_configs }}
+      echo "    neutron::plugins::ml2::ovn::ovn_emit_need_to_frag: True" >> {{ ovn_extra_configs }}
   when:
       - infrared_deployment|bool
       - support_jumbo_mtu|bool
@@ -163,8 +187,8 @@
 
 - name: Enable networker chassis as gateway for composable deployments
   shell: |
-      echo "  NetworkerParameters:" >> /home/stack/neutron_bridge_mappings.yaml
-      echo "    OVNCMSOptions: enable-chassis-as-gw" >> /home/stack/neutron_bridge_mappings.yaml
+      echo "  NetworkerParameters:" >> {{ ovn_extra_configs }}
+      echo "    OVNCMSOptions: enable-chassis-as-gw" >> {{ ovn_extra_configs }}
   when:
       - infrared_deployment|bool
       - has_networker|bool

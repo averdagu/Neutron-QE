@@ -35,28 +35,8 @@ subparsers:
                           Names are for RDO releases
                           If not given, same version of the undercloud will be used
                       choices:
-                        - "7"
-                        - "8"
-                        - "9"
-                        - "10"
-                        - "11"
-                        - "12"
-                        - "13"
-                        - "14"
-                        - "15"
-                        - "16"
                         - "16.1"
                         - "16.2"
-                        - kilo
-                        - liberty
-                        - mitaka
-                        - newton
-                        - ocata
-                        - pike
-                        - queens
-                        - rocky
-                        - stein
-                        - train
                   install_from_package:
                       type: Bool
                       help: Install python-networking-ovn-migration-tool rpm
@@ -142,3 +122,18 @@ subparsers:
                       type: Bool
                       help: Whether environment has standalone networkers.
                       default: False
+
+                  vlan_transparency:
+                      type: Bool
+                      help: Whether target environment should have VLAN transtarency enabled.
+                      default: True
+
+                  igmp_snooping:
+                      type: Bool
+                      help: Whether target environment should have IGMP snooping enabled.
+                      default: True
+
+                  neutron_dns_domain:
+                      type: Value
+                      help: A string to use as a Neutron DNS domain.
+                      default: openstackgate.local

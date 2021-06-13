@@ -65,6 +65,9 @@
             is_sriov: "{{ install.sriov }}"
             support_jumbo_mtu: "{{ install.jumbo_mtu }}"
             has_networker: "{{ install.networker }}"
+            has_vlan_transparency: "{{ install.vlan_transparency }}"
+            has_igmp_snooping: "{{ install.igmp_snooping }}"
+            neutron_dns_domain: "{{ install.neutron_dns_domain }}"
         when: install is defined
 
       - name: Set necessary facts (Tripleo deployment)
@@ -75,6 +78,9 @@
             is_sriov: "{{ sriov }}"
             support_jumbo_mtu: "{{ jumbo_mtu }}"
             has_networker: "{{ networker }}"
+            has_vlan_transparency: "{{ vlan_transparency }}"
+            has_igmp_snooping: "{{ igmp_snooping }}"
+            neutron_dns_domain: "{{ neutron_dns_domain }}"
         when: install is not defined
 
       - name: Set overcloudrc
