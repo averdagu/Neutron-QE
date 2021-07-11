@@ -18,4 +18,5 @@ openstack -vvv overcloud deploy  \
 -e /home/stack/ospd-16-vlan-sriov-hybrid-ha-ovn-squad/nova-resize-on-the-same-host.yaml \
 -e /home/stack/ospd-16-vlan-sriov-hybrid-ha-ovn-squad/l3_fip_qos.yaml \
 -e /home/stack/ospd-16-vlan-sriov-hybrid-ha-ovn-squad/ovn-extras.yaml \
+-e /home/stack/ospd-16-vlan-sriov-hybrid-ha-ovn-squad/docker-images.yaml \
 --log-file overcloud_install.log &> overcloud_install.log
