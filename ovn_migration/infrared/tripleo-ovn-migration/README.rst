@@ -7,15 +7,14 @@ See http://infrared.readthedocs.io/en/stable/index.html for more information.
 
 Before using this plugin, first deploy an ML2OVS overcloud and then:
 
-1. On your undercloud, install python-networking-ovn-migration-tool package (https://trunk.rdoproject.org/centos7-master/current/)
-   You also need to install python-networking-ovn and python2-openvswitch packages.
+1. On your undercloud, install python-networking-ovn-migration-tool package
 
 2. Run ::
    $infrared plugin add "https://github.com/openstack/networking-ovn.git"
 
 3. Start migration by running::
 
-   $infrared  tripleo-ovn-migration  --version 13|14 \
+   $infrared  tripleo-ovn-migration  --version 16.1|16.2 \
 --registry-namespace <REGISTRY_NAMESPACE> \
 --registry-tag <TAG> \
 --registry-prefix <PREFIX>
