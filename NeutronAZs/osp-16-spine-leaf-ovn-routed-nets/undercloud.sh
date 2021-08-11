@@ -21,6 +21,9 @@ openstack baremetal node set --property capabilities='profile:compute1,boot_opti
 openstack baremetal node set --property capabilities='profile:compute1,boot_option:local' dcn1-compute-1
 openstack baremetal node set --property capabilities='profile:compute2,boot_option:local' dcn2-compute-0
 openstack baremetal node set --property capabilities='profile:compute2,boot_option:local' dcn2-compute-1
+openstack baremetal node set --property capabilities='profile:control0,boot_option:local' dcn2-networker-0
+openstack baremetal node set --property capabilities='profile:control0,boot_option:local' dcn2-networker-1
+
 
 
 ## Mapping bare metal node ports to control plane network segments
