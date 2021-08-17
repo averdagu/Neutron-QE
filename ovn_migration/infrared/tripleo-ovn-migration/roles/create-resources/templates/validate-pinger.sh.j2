@@ -1,10 +1,15 @@
 #!/bin/bash
 set -x
 
+resources_type={{ resources_type }}
+server_user_name={{ server_user_name }}
+
 : ${LOSS_THRESHOLD_PERCENT:=1}
 
 check_if_pinger_stopped(){
-    wait_time=10;
+    [ "$2" == "quick" ] && wait_time=1 || wait_time=10
+    size=$(stat --format=%s $file)
+    [ $size -eq 0 ] && echo "Log file is empty, something went wrong" && exit 1
     until grep 'packet loss' $file; do
         sleep 1
         wait_time=$((wait_time-1))
@@ -31,3 +36,18 @@ for file in $file_list; do
     check_if_pinger_stopped $file
     validate $file
 done
+
+if [ "$resources_type" == "trunk" ]; then
+    for fip in `cat {{ ovn_migration_temp_dir }}/server_fips`;do
+	ssh $server_user_name@$fip pkill --signal SIGINT ping
+	sleep 2
+	mkdir -p {{ ovn_migration_temp_dir }}/ping_output/$fip
+        timeout 10 scp "$server_user_name@$fip:ping_*_output" {{ ovn_migration_temp_dir }}/ping_output/$fip
+    done
+    file_list=`find {{ ovn_migration_temp_dir }}/ping_output -type f`
+    [ "$file_list" == "" ] && echo "No pinger log files found. Something went wrong." && exit 1
+    for file in $file_list; do
+        check_if_pinger_stopped $file quick
+        validate $file
+    done
+fi

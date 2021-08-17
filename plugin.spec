@@ -73,6 +73,7 @@ subparsers:
                           sriov_int: as sriov_int_no_pf but creates also VMs with SR-IOV PF(direct-physical) ports
                           sriov_ext_no_pf: as sriov_int_no_pf but creates VMs connected to the external network
                           sriov_ext: as sriov_ext_no_pf but creates also VMs with SR-IOV PF(direct-physical) ports
+                          trunk: create VMs with trunk ports
                       choices:
                         - normal
                         - normal_ext
@@ -81,6 +82,7 @@ subparsers:
                         - sriov_int
                         - sriov_ext_no_pf
                         - sriov_ext
+                        - trunk
                       default: normal
 
                   external_network:
