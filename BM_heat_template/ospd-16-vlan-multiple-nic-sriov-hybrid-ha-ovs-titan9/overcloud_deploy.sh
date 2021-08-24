@@ -5,6 +5,8 @@ if [[ ! -f "$THT_PATH/roles_data.yaml" ]]; then
   openstack overcloud roles generate -o $THT_PATH/roles_data.yaml Controller ComputeSriov
 fi
 
+[ -s $THT_PATH/docker-images.yaml ] && docker_images="-e $THT_PATH/docker-images.yaml"
+
 openstack -vvv overcloud deploy  \
 --templates \
 --timeout 120 \
@@ -20,5 +22,5 @@ openstack -vvv overcloud deploy  \
 -e /home/stack/ospd-16-vlan-multiple-nic-sriov-hybrid-ha-ovs-titan9/network-environment.yaml \
 -e /home/stack/containers-prepare-parameter.yaml \
 -e /home/stack/ospd-16-vlan-multiple-nic-sriov-hybrid-ha-ovs-titan9/os-net-config-mappings.yaml \
--e /home/stack/ospd-16-vlan-multiple-nic-sriov-hybrid-ha-ovs-titan9/docker-images.yaml \
+$docker_images \
 --log-file overcloud_install.log &> overcloud_install.log
