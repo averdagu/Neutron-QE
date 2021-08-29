@@ -173,6 +173,7 @@
                   image_to_boot: "{{ install.image_name }}"
                   server_user_name: "{{ install.server_user_name }}"
                   resources_type: "{{ install.resources_type }}"
+                  fix_mtu: "{{ install.fix_workload_mtu }}"
               when: install is defined
 
             - name: Set facts for resources creation (Tripleo deployment)
@@ -181,6 +182,7 @@
                   image_to_boot: "{{ image_name }}"
                   server_user_name: "{{ server_user_name }}"
                   resources_type: "{{ resources_type }}"
+                  fix_mtu: "{{ fix_workload_mtu }}"
               when: install is not defined
 
             - name: Fail if resources_type is dvr while environment is SR-IOV

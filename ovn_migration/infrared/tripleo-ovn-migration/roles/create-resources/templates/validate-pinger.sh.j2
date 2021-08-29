@@ -37,7 +37,7 @@ for file in $file_list; do
     validate $file
 done
 
-if [ "$resources_type" == "trunk" ]; then
+if [[ "$resources_type" =~ "trunk" ]]; then
     for fip in `cat {{ ovn_migration_temp_dir }}/server_fips`;do
 	ssh $server_user_name@$fip pkill --signal SIGINT ping
 	sleep 2

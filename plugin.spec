@@ -74,6 +74,7 @@ subparsers:
                           sriov_ext_no_pf: as sriov_int_no_pf but creates VMs connected to the external network
                           sriov_ext: as sriov_ext_no_pf but creates also VMs with SR-IOV PF(direct-physical) ports
                           trunk: create VMs with trunk ports
+                          trunk_ext: use VMs with trunk ports, launch VMs on external(aka provider) network
                       choices:
                         - normal
                         - normal_ext
@@ -83,6 +84,7 @@ subparsers:
                         - sriov_ext_no_pf
                         - sriov_ext
                         - trunk
+                        - trunk_ext
                       default: normal
 
                   external_network:
@@ -139,3 +141,8 @@ subparsers:
                       type: Bool
                       help: Whether to run migration with validation or not.
                       default: True
+
+                  fix_workload_mtu:
+                      type: Bool
+                      help: Whether to go over all workload VMs and reduce MTU before starting the migration.
+                      default: False

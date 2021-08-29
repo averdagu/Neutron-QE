@@ -14,23 +14,33 @@ for server in $(openstack server list --all -c ID -c Name -f value | grep migrat
   openstack server delete $server
 done
 
+echo Deleting trunks
+for trunk in $(openstack network trunk list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
+  echo Deleting trunk with id $trunk
+  openstack network trunk delete $trunk
+done
+
+echo Deleting ports created for migration workload
 for port in $(openstack port list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
-  echo Deleting ports created for migration workload
+  echo Deleting port with id $port
   openstack port delete $port
 done
 
+echo Deleting keypairs created for migration workload
 for keypair in $(openstack keypair list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
-  echo Deleting keypairs created for migration workload
+  echo Deleting keypair with id $keypair
   openstack keypair delete $keypair
 done
 
+echo Deleting flavors created for migration workload
 for flavor in $(openstack flavor list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
-  echo Deleting flavors created for migration workload
+  echo Deleting flavor with id $flavor
   openstack flavor delete $flavor
 done
 
+echo Deleting images created for migration workload
 for image in $(openstack image list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
-  echo Deleting images created for migration workload
+  echo Deleting image with id $image
   openstack image delete $image
 done
 
