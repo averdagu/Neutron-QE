@@ -9,7 +9,7 @@ image_name={{ image_name }}
 openstack image show $image_name
 if [ "$?" != "0" ]
 then
-    if [[ "$resources_type" =~ "sriov" ]]
+    if [[ "$resources_type" =~ "sriov" ]] || [[ "$resources_type" =~ "trunk" ]]
     then
 	#image_url=https://cloud.centos.org/centos/8/x86_64/images/CentOS-8-GenericCloud-8.1.1911-20200113.3.x86_64.qcow2
 	image_url=http://download.devel.redhat.com/brewroot/packages/rhel-guest-image/8.1/283/images/rhel-guest-image-8.1-283.x86_64.qcow2
@@ -31,6 +31,8 @@ then
     image_name="$image_os-ovn-migration-{{ resource_suffix }}"
     openstack image create $image_name  --file workload_image \
 --disk-format qcow2 --container-format bare --public
+else
+    server_user_name={{ server_user_name }}
 fi
 
 if [[ "$image_name" =~ "cirros" ]]
@@ -43,7 +45,8 @@ else
 fi
 openstack flavor create ovn-migration-{{ resource_suffix }} --ram $ram --disk $disk --vcpus 1
 
-openstack keypair create ovn-migration-{{ resource_suffix }} --private-key {{ ovn_migration_temp_dir }}/ovn_migration_ssh_key
+#openstack keypair create ovn-migration-{{ resource_suffix }} --private-key {{ ovn_migration_temp_dir }}/ovn_migration_ssh_key
+openstack keypair create ovn-migration-{{ resource_suffix }} --public-key ~/.ssh/id_rsa.pub
 
 openstack security group create ovn-migration-sg-{{ resource_suffix }}
 
@@ -54,9 +57,19 @@ openstack security group rule create --ingress --protocol tcp --dst-port 22  ovn
 if [ "$resources_type" == "sriov_int" ]
 then
     vlan_id=$(openstack network create ovn-migration-net-{{ resource_suffix }} | awk -F'[ \t]*\\|[ \t]*' '/ provider:segmentation_id / {print $3}')
+    bootproto="dhcp"
+    persistent_dhclient="yes"
 elif [ "$resources_type" == "sriov_ext" ]
 then
     vlan_id=$(openstack network show {{ public_network_name }} | awk -F'[ \t]*\\|[ \t]*' '/ provider:segmentation_id / {print $3}')
+    bootproto="dhcp"
+    persistent_dhclient="yes"
+elif [ "$resources_type" == "trunk" ]
+then
+    vlan_id=1001
+    bootproto="none"
+    persistent_dhclient="no"
+    openstack network create ovn-migration-net-{{ resource_suffix }}
 else
     openstack network create ovn-migration-net-{{ resource_suffix }}
 fi
@@ -131,10 +144,10 @@ write_files:
     permissions: \"777\"
     content: |
       DEVICE=\"eth0.$vlan_id\"
-      BOOTPROTO=\"dhcp\"
+      BOOTPROTO=\"$bootproto\"
       ONBOOT=\"yes\"
       VLAN=\"yes\"
-      PERSISTENT_DHCLIENT=\"yes\"
+      PERSISTENT_DHCLIENT=\"$persistent_dhclient\"
 runcmd:
   - [ sh, -c , \"systemctl restart NetworkManager\" ]
 "
@@ -171,6 +184,34 @@ EOM
     done
 }
 
+declare -a FIPS
+declare -a SUBPORT_IPS
+launch_trunk_instances(){
+    openstack network create ovn-migration-net-vlan-{{ resource_suffix }}
+    openstack subnet create --network ovn-migration-net-vlan-{{ resource_suffix }} --subnet-range 192.168.200.0/24 subnet-vlan
+    for i in $(seq 1 $num_hypervisors)
+    do
+        [ "$num_hypervisors" == "1" ] && index_suffix="" || index_suffix="-$i"
+	parent_port=ovn-migration-port-trunk-{{ resource_suffix }}$index_suffix
+        openstack port create  --network ovn-migration-net-{{ resource_suffix }}  --vnic-type normal $parent_port --security-group ovn-migration-sg-{{ resource_suffix }}
+        parent_mac="$( openstack port show $parent_port | awk '/ mac_address / { print $4 }' )"
+
+        IP=$(openstack port create --network ovn-migration-net-vlan-{{ resource_suffix }} --mac-address "$parent_mac" ${parent_port}-subport -c fixed_ips -f value  | tr -d "[]{}:'" | tr "," "\n" | grep ip_addr | awk '{print $2}' )
+        openstack network trunk create --parent-port $parent_port --subport port=${parent_port}-subport,segmentation-type=vlan,segmentation-id=$vlan_id ovn-migration-trunk-{{ resource_suffix }}${index_suffix}
+	SUBPORT_IPS[$i]=$IP
+        /bin/cat <<EOM > create_interface$index_suffix.yaml
+$create_interface_template
+EOM
+        sed -i "/^runcmd.*/i \ \ \ \ \ \ PREFIX=24" create_interface$index_suffix.yaml
+        sed -i "/^runcmd.*/i \ \ \ \ \ \ IPADDR=$IP" create_interface$index_suffix.yaml
+
+        openstack server create --flavor ovn-migration-{{ resource_suffix }}  --image $image_name \
+        --key-name ovn-migration-{{ resource_suffix }} \
+	--nic port-id=$parent_port ovn-migration-server-trunk-{{ resource_suffix }}$index_suffix \
+	--config-drive True --user-data create_interface$index_suffix.yaml
+    done
+}
+
 if [ "$resources_type" == "normal" ]
 then
     launch_normal_int_instances
@@ -181,6 +222,12 @@ if [ "$resources_type" == "normal_ext" ]
 then
     launch_normal_ext_instances
     type_suffixes="normal-ext"
+fi
+
+if [ "$resources_type" == "trunk" ]
+then
+    launch_trunk_instances
+    type_suffixes="trunk"
 fi
 
 if [ "$resources_type" == "sriov_int_no_pf" ]
@@ -274,6 +321,7 @@ do
 	    fi
 
         echo $server_ip >> {{ ovn_migration_temp_dir }}/server_fips
+	FIPS[$i]=$server_ip
 
         # Wait till the VM allows ssh connections
 
@@ -299,7 +347,7 @@ do
     done
 done
 
-chmod 0600 {{ ovn_migration_temp_dir }}/ovn_migration_ssh_key
+#chmod 0600 {{ ovn_migration_temp_dir }}/ovn_migration_ssh_key
 
 
 for server_ip in `cat {{ ovn_migration_temp_dir }}/server_fips`
@@ -323,9 +371,19 @@ do
         fi
     done
 
-    ssh -i {{ ovn_migration_temp_dir }}/ovn_migration_ssh_key -o StrictHostKeyChecking=no \
+    #ssh -i {{ ovn_migration_temp_dir }}/ovn_migration_ssh_key -o StrictHostKeyChecking=no \
+    ssh -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
 done
+
+# For trunk workload we will run ping from each server to subports on other servers
+if [ "$resources_type" == "trunk" ]; then
+    for i in $(seq 1 $num_hypervisors); do
+        for s in $(seq 1 $num_hypervisors); do
+            [ $s -ne $i ] && ssh $server_user_name@${FIPS[$i]}  "ping ${SUBPORT_IPS[$s]} > ping_${SUBPORT_IPS[$s]}_output 2>&1 &"
+        done
+    done
+fi
 
 echo "Done with the resource creation : exiting"
 exit 0
