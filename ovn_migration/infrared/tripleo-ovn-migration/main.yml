@@ -68,6 +68,7 @@
             has_vlan_transparency: "{{ install.vlan_transparency }}"
             has_igmp_snooping: "{{ install.igmp_snooping }}"
             neutron_dns_domain: "{{ install.neutron_dns_domain }}"
+            validate_migration: "{{ install.validate_migration }}"
         when: install is defined
 
       - name: Set necessary facts (Tripleo deployment)
@@ -81,6 +82,7 @@
             has_vlan_transparency: "{{ vlan_transparency }}"
             has_igmp_snooping: "{{ igmp_snooping }}"
             neutron_dns_domain: "{{ neutron_dns_domain }}"
+            validate_migration: "{{ validate_migration }}"
         when: install is not defined
 
       - name: Set overcloudrc
@@ -232,16 +234,6 @@
             - name: Set the public network name (Tripleo deployment)
               set_fact:
                   public_network: "{{ external_network }}"
-              when: install is not defined
-
-            - name: Set compute external access fact (infrared deployment)
-              set_fact:
-                  compute_external_access: "{{ install.compute_external_access }}"
-              when: install is defined
-
-            - name: Set compute external access fact (Tripleo deployment)
-              set_fact:
-                  compute_external_access: "{{ compute_external_access }}"
               when: install is not defined
 
             - name: Create ovn migration script

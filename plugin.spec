@@ -90,11 +90,6 @@ subparsers:
                       help: External network name to use
                       default: public
 
-                  compute_external_access:
-                      type: Bool
-                      help: Whether compute nodes have access to the external network (i.e. external interface is under br-ex bridge).
-                      default: False
-
                   image_name:
                       type: Value
                       help: Image name to use
@@ -139,3 +134,8 @@ subparsers:
                       type: Value
                       help: A string to use as a Neutron DNS domain.
                       default: openstackgate.local
+
+                  validate_migration:
+                      type: Bool
+                      help: Whether to run migration with validation or not.
+                      default: True
