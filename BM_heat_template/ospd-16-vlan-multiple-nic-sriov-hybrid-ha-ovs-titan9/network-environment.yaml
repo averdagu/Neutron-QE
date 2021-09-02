@@ -47,6 +47,8 @@ parameter_defaults:
   OvercloudControlFlavor: controller
   OvercloudComputeSriovFlavor: compute
   NeutronEnableDVR: false
+  NeutronOVSFirewallDriver: openvswitch
+  NeutronFirewallDriver: openvswitch
 
  # Number of nodes to deploy.
   ControllerCount: 3
