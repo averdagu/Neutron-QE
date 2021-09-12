@@ -37,3 +37,9 @@
   shell: >
       nohup {{ ovn_migration_temp_dir }}/start-pinger.sh </dev/null >/dev/null 2>&1 &
   changed_when: False
+
+- name: Create network validate script
+  template:
+    src: validate-network.sh.j2
+    dest: "{{ ovn_migration_working_dir }}/validate-network.sh"
+    mode: 0744

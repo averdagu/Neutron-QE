@@ -146,3 +146,8 @@ subparsers:
                       type: Bool
                       help: Whether to go over all workload VMs and reduce MTU before starting the migration.
                       default: False
+
+                  geneve:
+                      type: Bool
+                      help: Whether to change tunnel to geneve.
+                      default: True

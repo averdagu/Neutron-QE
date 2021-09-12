@@ -148,6 +148,16 @@
       echo "    NeutronBridgeMappings: \"$current_mappings\"" >> {{ ovn_extra_configs }}
   when: infrared_deployment|bool
 
+- name: Set geneve into OVN extra configs file
+  shell: |
+      echo "  NeutronTypeDrivers: 'geneve,vlan,flat'" >> {{ ovn_extra_configs }}
+      echo "  NeutronNetworkType: ['geneve', 'vlan', 'flat']" >> {{ ovn_extra_configs }}
+      echo "  NeutronTunnelTypes: geneve" >> {{ ovn_extra_configs }}
+  when:
+      - infrared_deployment|bool
+      - not is_sriov|bool
+      - set_geneve|bool
+
 - name: Add VLAN transparency
   shell: |
       echo "  EnableVLANTransparency: true" >> {{ ovn_extra_configs }}

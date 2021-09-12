@@ -69,6 +69,7 @@
             has_igmp_snooping: "{{ install.igmp_snooping }}"
             neutron_dns_domain: "{{ install.neutron_dns_domain }}"
             validate_migration: "{{ install.validate_migration }}"
+            set_geneve: "{{ install.geneve }}"
         when: install is defined
 
       - name: Set necessary facts (Tripleo deployment)
@@ -83,6 +84,7 @@
             has_igmp_snooping: "{{ igmp_snooping }}"
             neutron_dns_domain: "{{ neutron_dns_domain }}"
             validate_migration: "{{ validate_migration }}"
+            set_geneve: "{{ geneve }}"
         when: install is not defined
 
       - name: Set overcloudrc
@@ -275,6 +277,16 @@
                   {{ ovn_migration_working_dir }}/validate-pinger.sh
                   > {{ ovn_migration_working_dir }}/validate-pinger.sh.log 2>&1
               when: create_vms|bool
+
+            - name: Validate network type
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/validate-network.sh
+                  > {{ ovn_migration_working_dir }}/validate-network.sh.log 2>&1
+              when:
+                  - create_vms|bool
+                  - not is_sriov|bool
+                  - set_geneve|bool
 
             - name: Set result file to passed
               shell: echo "passed" > /home/stack/migration_result
