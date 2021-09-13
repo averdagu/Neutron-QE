@@ -3,7 +3,7 @@ parameter_defaults:
    OvercloudComputeFlavor: compute
    ControllerCount: 3
    OvercloudControllerFlavor: controller
-   NetworkerCount: 2
+   NetworkerCount: 3
    OvercloudNetworkerFlavor: networker
 
 resource_registry:

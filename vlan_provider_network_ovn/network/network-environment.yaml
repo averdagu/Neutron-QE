@@ -28,6 +28,11 @@ parameter_defaults:
     NeutronTypeDrivers: 'geneve,vlan'
     NeutronExternalNetworkBridge: ''
     NeutronTunnelTypes: 'geneve,vlan'
+    NeutronGlobalPhysnetMtu: 9000
     NetworkerParameters:
         OVNCMSOptions: "enable-chassis-as-gw"
+    OVNEmitNeedToFrag: True
+    ExtraConfig:
+      neutron::plugins::ml2::path_mtu: 9000
+      neutron::plugins::ml2::ovn::ovn_emit_need_to_frag: True
 
