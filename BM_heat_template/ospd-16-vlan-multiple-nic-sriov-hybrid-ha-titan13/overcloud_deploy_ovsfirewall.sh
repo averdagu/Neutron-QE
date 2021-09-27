@@ -18,6 +18,7 @@ openstack -vvv overcloud deploy  \
 -e /home/stack/ospd-16-vlan-multiple-nic-sriov-hybrid-ha-titan13/dns.yaml \
 -e /home/stack/ospd-16-vlan-multiple-nic-sriov-hybrid-ha-titan13/floating_ip_port_forwarding.yaml \
 -e /home/stack/ospd-16-vlan-multiple-nic-sriov-hybrid-ha-titan13/nova-resize-on-the-same-host.yaml \
+-e /home/stack/ospd-16-vlan-multiple-nic-sriov-hybrid-ha-titan13/ovs-firewall.yaml \
 -e /home/stack/ospd-16-vlan-multiple-nic-sriov-hybrid-ha-titan13/set-nova-scheduler-filter.yaml \
 -e /home/stack/ospd-16-vlan-multiple-nic-sriov-hybrid-ha-titan13/network-environment.yaml \
 -e /home/stack/containers-prepare-parameter.yaml \
