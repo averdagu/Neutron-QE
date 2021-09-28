@@ -15,7 +15,7 @@ then
 	image_os='rhel-8'
 	server_user_name='cloud-user'
     else
-	image_url=https://github.com/cirros-dev/cirros/releases/download/0.4.0/cirros-0.4.0-x86_64-disk.img
+	image_url=https://github.com/cirros-dev/cirros/releases/download/0.5.2/cirros-0.5.2-x86_64-disk.img
 	image_os=cirros
 	server_user_name=cirros
     fi
@@ -34,7 +34,7 @@ fi
 
 if [[ "$image_name" =~ "cirros" ]]
 then
-    ram=64
+    ram=128
     disk=1
 else
     ram=1024

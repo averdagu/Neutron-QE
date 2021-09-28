@@ -95,7 +95,7 @@ subparsers:
                   image_name:
                       type: Value
                       help: Image name to use
-                      default: cirros-0.4.0-x86_64-disk.img
+                      default: cirros-0.5.2-x86_64-disk.img
 
                   server_user_name:
                       type: Value
