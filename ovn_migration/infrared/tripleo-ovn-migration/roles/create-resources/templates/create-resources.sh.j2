@@ -386,7 +386,7 @@ do
         fi
     done
 
-    timeout 10 ssh -o StrictHostKeyChecking=no \
+    timeout 20 ssh -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
     if [ $? -ne 0 ]; then
         echo "VM not accessible via ssh. Something went wrong."
@@ -399,7 +399,7 @@ if [ "{{ fix_mtu }}" == "True" ]; then
     do
         current_mtu=$(ssh $server_user_name@$server_ip /sbin/ip -o link show eth0 | sed 's/.*mtu\ \(.*\)\ qdisc.*/\1/')
 	target_mtu=$(( current_mtu - 8 ))
-	timeout 10 ssh $server_user_name@$server_ip sudo /sbin/ip link set dev eth0 mtu $target_mtu
+	timeout 20 ssh $server_user_name@$server_ip sudo /sbin/ip link set dev eth0 mtu $target_mtu
     done
 fi
 
