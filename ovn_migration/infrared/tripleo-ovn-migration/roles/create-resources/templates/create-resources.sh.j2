@@ -248,6 +248,12 @@ then
     type_suffixes="trunk-ext"
 fi
 
+if [ "$resources_type" == "sriov_int_vf" ]
+then
+    launch_sriov_vf_int_instances
+    type_suffixes="vf-int"
+fi
+
 if [ "$resources_type" == "sriov_int_no_pf" ]
 then
     launch_normal_int_instances
@@ -261,6 +267,12 @@ then
     launch_sriov_vf_int_instances
     launch_sriov_pf_int_instances
     type_suffixes="normal-int vf-int pf-int"
+fi
+
+if [ "$resources_type" == "sriov_ext_vf" ]
+then
+    launch_sriov_vf_ext_instances
+    type_suffixes="vf-ext"
 fi
 
 if [ "$resources_type" == "sriov_ext_no_pf" ]

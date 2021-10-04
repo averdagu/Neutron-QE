@@ -71,16 +71,20 @@ subparsers:
                           dvr: same as normal but creates DVR router instead of HA
                           sriov_int_no_pf: as normal but creates also VMs with SR-IOV VF(direct) ports
                           sriov_int: as sriov_int_no_pf but creates also VMs with SR-IOV PF(direct-physical) ports
+                          sriov_int_vf: creates VMs only with direct(VF) ports
                           sriov_ext_no_pf: as sriov_int_no_pf but creates VMs connected to the external network
                           sriov_ext: as sriov_ext_no_pf but creates also VMs with SR-IOV PF(direct-physical) ports
+                          sriov_ext_vf: creates VMs only with direct(VF) ports on external network
                           trunk: create VMs with trunk ports
                           trunk_ext: use VMs with trunk ports, launch VMs on external(aka provider) network
                       choices:
                         - normal
                         - normal_ext
                         - dvr
+                        - sriov_int_vf
                         - sriov_int_no_pf
                         - sriov_int
+                        - sriov_ext_vf
                         - sriov_ext_no_pf
                         - sriov_ext
                         - trunk
