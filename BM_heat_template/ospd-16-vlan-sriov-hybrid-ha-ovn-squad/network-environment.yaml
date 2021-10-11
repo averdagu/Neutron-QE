@@ -39,7 +39,7 @@ parameter_defaults:
   DnsServers: ["10.46.0.31","10.46.0.32"]
   NeutronNetworkType: 'vlan,flat'
   NeutronTunnelTypes: ''
-  NeutronBridgeMappings: 'datacentre:br-ext-int,tenant:br-int'
+  NeutronBridgeMappings: 'datacentre:br-ext-int'
   NeutronNetworkVLANRanges: 'datacentre:319:319,datacentre:321:324,datacentre:354:368'
   OvercloudControlFlavor: controller
   OvercloudComputeSriovFlavor: compute
