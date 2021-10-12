@@ -64,7 +64,6 @@ else
     openstack network create ovn-migration-net-{{ resource_suffix }}
 fi
 
-
 if [[ "$resources_type" =~ "sriov" ]]
 then
     bootproto="dhcp"
@@ -74,6 +73,13 @@ then
     bootproto="none"
     persistent_dhclient="no"
 fi
+
+[ "$resources_type" == "dvr" ] && dvr_params="--distributed --no-ha"
+openstack router create ovn-migration-router-{{ resource_suffix }} $dvr_params
+
+openstack router set --external-gateway {{ public_network_name }} ovn-migration-router-{{ resource_suffix }}
+
+openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-{{ resource_suffix }}
 
 openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  --subnet-range 192.168.168.0/24 ovn-migration-subnet-{{ resource_suffix }}
 
@@ -289,13 +295,6 @@ then
     launch_sriov_pf_ext_instances
     type_suffixes="normal-ext vf-ext pf-ext"
 fi
-
-[ "$resources_type" == "dvr" ] && dvr_params="--distributed --no-ha"
-openstack router create ovn-migration-router-{{ resource_suffix }} $dvr_params
-
-openstack router set --external-gateway {{ public_network_name }} ovn-migration-router-{{ resource_suffix }}
-
-openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-{{ resource_suffix }}
 
 for i in $(seq 1 $num_hypervisors)
 do
