@@ -1,0 +1,10 @@
+#!/bin/bash
+set -x
+
+. {{ overcloudrc }}
+provisioning_status=$(openstack loadbalancer show ovn-migration-loadbalancer-{{ resource_suffix }} -c provisioning_status -f value)
+echo "Load balancer provisioning status after migration is '$provisioning_status'"
+if [ "$provisioning_status" != "ACTIVE" ]; then
+    echo "Load balancer provisioning status is not set to 'ACTIVE'. Something went wrong."
+    exit 1
+fi

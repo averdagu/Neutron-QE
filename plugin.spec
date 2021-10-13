@@ -155,3 +155,8 @@ subparsers:
                       type: Bool
                       help: Whether to change tunnel to geneve.
                       default: True
+
+                  create_loadbalancer:
+                      type: Bool
+                      help: Whether to create a Octavia load balancer and add workload VMs as members.
+                      default: False

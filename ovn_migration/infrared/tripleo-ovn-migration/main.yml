@@ -176,6 +176,7 @@
                   server_user_name: "{{ install.server_user_name }}"
                   resources_type: "{{ install.resources_type }}"
                   fix_mtu: "{{ install.fix_workload_mtu }}"
+                  loadbalancer: "{{ install.create_loadbalancer }}"
               when: install is defined
 
             - name: Set facts for resources creation (Tripleo deployment)
@@ -185,6 +186,7 @@
                   server_user_name: "{{ server_user_name }}"
                   resources_type: "{{ resources_type }}"
                   fix_mtu: "{{ fix_workload_mtu }}"
+                  loadbalancer: "{{ create_loadbalancer }}"
               when: install is not defined
 
             - name: Fail if resources_type is dvr while environment is SR-IOV
@@ -287,6 +289,15 @@
                   - create_vms|bool
                   - not is_sriov|bool
                   - set_geneve|bool
+
+            - name: Validate load balancer status
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/validate-loadbalancer.sh
+                  > {{ ovn_migration_working_dir }}/validate-loadbalancer.sh.log 2>&1
+              when:
+                  - create_vms|bool
+                  - loadbalancer|bool
 
             - name: Set result file to passed
               shell: echo "passed" > /home/stack/migration_result

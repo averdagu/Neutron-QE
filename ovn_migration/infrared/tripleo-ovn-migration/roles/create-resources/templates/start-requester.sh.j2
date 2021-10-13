@@ -1,0 +1,21 @@
+#!/bin/bash
+set -x
+while true; do
+    for ip in `cat {{ ovn_migration_temp_dir }}/load_balancer_ips`
+    do
+	if [ -e {{ ovn_migration_working_dir }}/_pinger_cmd.txt ]; then
+	    grep "exit" {{ ovn_migration_working_dir }}/_pinger_cmd.txt
+	    [ $? -eq 0 ] && echo "Exiting..." && exit
+	fi
+	output_file={{ ovn_migration_working_dir }}/${ip}_requester.out
+	output=$(timeout 3 curl -q $ip | tee -a $output_file)
+	timestamp=$(date +%F\ %T)
+	echo | tee -a  $output_file
+	echo -n "$timestamp Test request: " | tee -a $output_file
+	echo $output | grep -q "I am ovn-migration-server"
+	[ $? -eq 0 ] && result="Success" || result="Fail"
+        echo $result | tee -a $output_file
+        echo | tee -a $output_file
+        sleep 1
+    done
+done

@@ -50,6 +50,8 @@ openstack security group rule create --ingress --protocol icmp ovn-migration-sg-
 
 openstack security group rule create --ingress --protocol tcp --dst-port 22  ovn-migration-sg-{{ resource_suffix }}
 
+[ "{{ loadbalancer }}" == "True" ] && openstack security group rule create --ingress --protocol tcp --dst-port 80  ovn-migration-sg-{{ resource_suffix }}
+
 if [ "$resources_type" == "sriov_int" ]
 then
     vlan_id=$(openstack network create ovn-migration-net-{{ resource_suffix }} | awk -F'[ \t]*\\|[ \t]*' '/ provider:segmentation_id / {print $3}')
@@ -405,6 +407,56 @@ do
         exit 1
     fi
 done
+
+wait_until_is_active(){
+    name=$1
+    object=$2
+    parent_object=$3
+    num_attempts=0
+    object_status="PENDING_CREATE"
+    while true; do
+        num_attempts=$((num_attempts+1))
+        sleep 5
+	status=$(openstack loadbalancer $object show $parent_object $name -c provisioning_status -f value)
+        if [ "$status" == "ACTIVE" ]; then
+	    break
+	else
+            [ $num_attempts -gt 24 ] && echo "$name is not active after 120 seconds. Something went wrong." && exit 1
+        fi
+    done
+}
+
+if [ "{{ loadbalancer }}" == "True" ]; then
+    external_subnet=$(openstack subnet list --network {{ public_network_name }} --ip-version 4 -c ID -f value)
+    openstack loadbalancer create --name ovn-migration-loadbalancer-{{ resource_suffix }} --vip-subnet-id $external_subnet
+    wait_until_is_active ovn-migration-loadbalancer-{{ resource_suffix }}
+    openstack loadbalancer listener create --name ovn-migration-listener-{{ resource_suffix }} --protocol HTTP --protocol-port 80 ovn-migration-loadbalancer-{{ resource_suffix }}
+    wait_until_is_active ovn-migration-listener-{{ resource_suffix }} listener
+    openstack loadbalancer pool create --name ovn-migration-pool-{{ resource_suffix }} --lb-algorithm ROUND_ROBIN --listener ovn-migration-listener-{{ resource_suffix }} --protocol HTTP
+    wait_until_is_active ovn-migration-pool-{{ resource_suffix }} pool
+    openstack loadbalancer healthmonitor create --name ovn-migration-healthmonitor-{{ resource_suffix }} --delay 5 --max-retries 4 --timeout 10 --type HTTP ovn-migration-pool-{{ resource_suffix }}
+    wait_until_is_active ovn-migration-healthmonitor-{{ resource_suffix }} healthmonitor
+    for i in $(seq 1 $num_hypervisors); do
+        [ "$num_hypervisors" == "1" ] && index_suffix="" || index_suffix="-$i"
+        for type_suffix in $type_suffixes; do
+            vm_ip=$(openstack server show ovn-migration-server-$type_suffix-{{ resource_suffix }}$index_suffix -c addresses | grep addresses | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -n 1)
+            member_id=$(openstack loadbalancer member create --subnet-id ovn-migration-subnet-{{ resource_suffix }} --address $vm_ip --protocol-port 80 ovn-migration-pool-{{ resource_suffix }} -c id -f value)
+	    wait_until_is_active $member_id member ovn-migration-pool-{{ resource_suffix }}
+	done
+    done
+
+    for server_ip in `cat {{ ovn_migration_temp_dir }}/server_fips`; do
+	timeout 20 ssh $server_user_name@$server_ip "while true ; do  echo -e \"HTTP/1.1 200 OK\\n\\n I am \$(hostname)\\n \$(date)\" | sudo nc -l -p 80  ;done &"
+	sleep 3
+        timeout 10 curl -q $server_ip | grep "I am ovn-migration-server"
+        [ $? -ne 0 ] && echo "Server did not respond as expected. Something went wrong." && exit 1
+    done
+    vip_address=$(openstack loadbalancer show ovn-migration-loadbalancer-{{ resource_suffix }} -c vip_address -f value)
+    sleep 10
+    timeout 10 curl -q $vip_address | grep "I am ovn-migration-server"
+    [ $? -ne 0 ] && echo "VIP did not respond as expected. Something went wrong." && exit 1
+    echo $vip_address >> {{ ovn_migration_temp_dir }}/load_balancer_ips
+fi
 
 if [ "{{ fix_mtu }}" == "True" ]; then
     for server_ip in `cat {{ ovn_migration_temp_dir }}/server_fips`

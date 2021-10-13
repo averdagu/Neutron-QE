@@ -2,49 +2,77 @@
 set -x
 . {{ overcloudrc }}
 
+echo Deleting load balancer health monitors
+for healthmonitor in $(openstack loadbalancer healthmonitor list -c id -c name -f value | grep ovn-migration | cut -d ' ' -f 1 ); do
+  echo Deleting octavia healthmonitor $healthmonitor
+  openstack loadbalancer healthmonitor delete $healthmonitor
+done
+
+echo Deleting load balancer pool and members
+for pool in $(openstack loadbalancer pool list -c id -c name -f value | grep ovn-migration | cut -d ' ' -f 1); do
+  for member in $(openstack loadbalancer member list $pool -c id -f value); do
+    echo Deleting member with id $member
+    openstack loadbalancer member delete $pool $member
+  done
+  echo Deleting pool with id $pool
+  openstack loadbalancer pool delete $pool
+done
+
+echo Deleting load balancer listeners
+for listener in $(openstack loadbalancer listener list -c id -c name -f value | grep ovn-migration | cut -d ' ' -f 1); do
+  echo Deleting listener with id $listener
+  openstack loadbalancer listener delete $listener
+done
+
+echo Deleting load balancers
+for loadbalancer in $(openstack loadbalancer list -c id -c name -f value | grep ovn-migration | cut -d ' ' -f 1); do
+  echo Deleting loadbalancer with id $loadbalancer
+  openstack loadbalancer delete $loadbalancer
+done
+
 echo Deleting floating ip addresses
-for fip in $(openstack floating ip list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
+for fip in $(openstack floating ip list -c ID -c Name -f value | grep ovn-migration | cut -d ' ' -f 1); do
   echo Deleting fip with id $fip
   openstack floating ip delete $fip
 done
 
 echo Deleting servers
-for server in $(openstack server list --all -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
+for server in $(openstack server list --all -c ID -c Name -f value | grep ovn-migration | cut -d ' ' -f 1); do
   echo Deleting server with id $server
   openstack server delete $server
 done
 
 echo Deleting trunks
-for trunk in $(openstack network trunk list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
+for trunk in $(openstack network trunk list -c ID -c Name -f value | grep ovn-migration | cut -d ' ' -f 1); do
   echo Deleting trunk with id $trunk
   openstack network trunk delete $trunk
 done
 
-echo Deleting ports created for migration workload
-for port in $(openstack port list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
+echo Deleting ports created for OVN migration workload
+for port in $(openstack port list -c ID -c Name -f value | grep ovn-migration | cut -d ' ' -f 1); do
   echo Deleting port with id $port
   openstack port delete $port
 done
 
-echo Deleting keypairs created for migration workload
-for keypair in $(openstack keypair list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
+echo Deleting keypairs created for OVN migration workload
+for keypair in $(openstack keypair list -c ID -c Name -f value | grep ovn-migration | cut -d ' ' -f 1); do
   echo Deleting keypair with id $keypair
   openstack keypair delete $keypair
 done
 
-echo Deleting flavors created for migration workload
-for flavor in $(openstack flavor list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
+echo Deleting flavors created for OVN migration workload
+for flavor in $(openstack flavor list -c ID -c Name -f value | grep ovn-migration | cut -d ' ' -f 1); do
   echo Deleting flavor with id $flavor
   openstack flavor delete $flavor
 done
 
-echo Deleting images created for migration workload
-for image in $(openstack image list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
+echo Deleting images created for OVN migration workload
+for image in $(openstack image list -c ID -c Name -f value | grep ovn-migration | cut -d ' ' -f 1); do
   echo Deleting image with id $image
   openstack image delete $image
 done
 
-for sg in $(openstack security group list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
+for sg in $(openstack security group list -c ID -c Name -f value | grep ovn-migration | cut -d ' ' -f 1); do
   echo Deleting rules from security group $sg
   for rule in $(openstack security group show $sg | grep 'id=' | grep -v location | grep -o 'id='.*'' | cut -d ' ' -f 1 | sed "s/id='\(.*\)'/\1/" | tr -d ',');do
     openstack security group rule delete $rule
@@ -53,7 +81,7 @@ for sg in $(openstack security group list -c ID -c Name -f value | grep migratio
 done
 
 echo Disconnecting routers from external network and subnets from routers
-for router in $(openstack router list -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
+for router in $(openstack router list -c ID -c Name -f value | grep ovn-migration | cut -d ' ' -f 1); do
   echo Disconnecting router with id $router from external gateway
   openstack router unset --external-gateway $router
   for subnet in $(openstack router show $router -c interfaces_info -f value | tr -d "[]{' "  | tr "}" "\n" | grep -v 169.254 | tr "," "\n"  | grep subnet_id | tr -d '"'  |  sed 's/.*subnet_id:\(.*\)/\1/' | sed '/^$/d' );do
@@ -65,7 +93,7 @@ for router in $(openstack router list -c ID -c Name -f value | grep migration | 
 done
 
 echo Deleting networks
-for net in $(openstack network list --internal -c ID -c Name -f value | grep migration | cut -d ' ' -f 1); do
+for net in $(openstack network list --internal -c ID -c Name -f value | grep ovn-migration | cut -d ' ' -f 1); do
   echo Deleting network with id $net
   openstack network delete $net
 done

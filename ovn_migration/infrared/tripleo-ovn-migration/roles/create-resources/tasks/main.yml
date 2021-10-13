@@ -27,6 +27,12 @@
     dest: "{{ ovn_migration_temp_dir }}/start-pinger.sh"
     mode: 0744
 
+- name: Generate requester script
+  template:
+    src: start-requester.sh.j2
+    dest: "{{ ovn_migration_temp_dir }}/start-requester.sh"
+    mode: 0744
+
 - name: Generate pinger validation script
   template:
     src: validate-pinger.sh.j2
@@ -38,8 +44,19 @@
       nohup {{ ovn_migration_temp_dir }}/start-pinger.sh </dev/null >/dev/null 2>&1 &
   changed_when: False
 
+- name: Start requester in background
+  shell: >
+      nohup {{ ovn_migration_temp_dir }}/start-requester.sh </dev/null >/dev/null 2>&1 &
+  changed_when: False
+
 - name: Create network validate script
   template:
     src: validate-network.sh.j2
     dest: "{{ ovn_migration_working_dir }}/validate-network.sh"
+    mode: 0744
+
+- name: Create load balancer validation script
+  template:
+    src: validate-loadbalancer.sh.j2
+    dest: "{{ ovn_migration_working_dir }}/validate-loadbalancer.sh"
     mode: 0744
