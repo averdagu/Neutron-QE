@@ -74,14 +74,15 @@ then
     persistent_dhclient="no"
 fi
 
+openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  --subnet-range 192.168.168.0/24 ovn-migration-subnet-{{ resource_suffix }}
+
 [ "$resources_type" == "dvr" ] && dvr_params="--distributed --no-ha"
+
 openstack router create ovn-migration-router-{{ resource_suffix }} $dvr_params
 
 openstack router set --external-gateway {{ public_network_name }} ovn-migration-router-{{ resource_suffix }}
 
 openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-{{ resource_suffix }}
-
-openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  --subnet-range 192.168.168.0/24 ovn-migration-subnet-{{ resource_suffix }}
 
 num_hypervisors=`openstack hypervisor stats show | grep count | awk '{print $4}'`
 
