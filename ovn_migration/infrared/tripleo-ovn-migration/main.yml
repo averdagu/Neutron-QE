@@ -175,7 +175,7 @@
               set_fact:
                   public_net: "{{ install.external_network }}"
                   image_to_boot: "{{ install.image_name }}"
-                  flavor_name: "{{ install.flavor_name }}"
+                  flavor_to_use: "{{ install.flavor_name }}"
                   server_user_name: "{{ install.server_user_name }}"
                   resources_type: "{{ install.resources_type }}"
                   fix_mtu: "{{ install.fix_workload_mtu }}"
@@ -186,7 +186,7 @@
               set_fact:
                   public_net: "{{ external_network }}"
                   image_to_boot: "{{ image_name }}"
-                  flavor_name: "{{ flavor_name }}"
+                  flavor_to_use: "{{ flavor_name }}"
                   server_user_name: "{{ server_user_name }}"
                   resources_type: "{{ resources_type }}"
                   fix_mtu: "{{ fix_workload_mtu }}"
@@ -217,7 +217,7 @@
               vars:
                   public_network_name: "{{ public_net }}"
                   image_name: "{{ image_to_boot }}"
-                  flavor_name: "{{ flavor_name }}"
+                  flavor_name: "{{ flavor_to_use }}"
                   ovn_migration_temp_dir: /home/stack/ovn_migration
                   dvr: is_dvr|bool
                   sriov: is_sriov|bool

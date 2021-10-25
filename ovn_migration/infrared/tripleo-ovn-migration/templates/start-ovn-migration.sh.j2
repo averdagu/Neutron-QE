@@ -9,7 +9,7 @@ export OVERCLOUDRC_FILE={{ overcloudrc }}
 export VALIDATE_MIGRATION={{ validate_migration }}
 if [ '{{ export_image }}' == 'True' ]; then
   export IMAGE_NAME={{ image_to_boot }}
-  export FLAVOR_NAME={{ flavor_name }}
+  export FLAVOR_NAME={{ flavor_to_use }}
   export SERVER_USER_NAME={{ server_user_name }}
 fi
 
