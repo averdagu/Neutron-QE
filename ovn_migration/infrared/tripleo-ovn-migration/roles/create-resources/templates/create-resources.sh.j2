@@ -6,6 +6,7 @@ source {{ overcloudrc }}
 resources_type={{ resources_type  }}
 
 image_name={{ image_name }}
+flavor_name={{ flavor_name }}
 openstack image show $image_name
 if [ "$?" != "0" ]
 then
@@ -40,7 +41,12 @@ else
     ram=1024
     disk=10
 fi
-openstack flavor create ovn-migration-{{ resource_suffix }} --ram $ram --disk $disk --vcpus 1
+openstack flavor show $flavor_name
+if [ "$?" != "0" ]
+then
+    flavor_name=ovn-migration-{{ resource_suffix }}
+    openstack flavor create $flavor_name --ram $ram --disk $disk --vcpus 1
+fi
 
 openstack keypair create ovn-migration-{{ resource_suffix }} --public-key ~/.ssh/id_rsa.pub
 
@@ -94,7 +100,7 @@ launch_normal_int_instances(){
         [ "$num_hypervisors" == "1" ] && index_suffix="" || index_suffix="-$i"
         openstack port create  --network ovn-migration-net-{{ resource_suffix }} --vnic-type normal ovn-migration-port-normal-int-{{ resource_suffix }}$index_suffix --security-group ovn-migration-sg-{{ resource_suffix }}
 
-        openstack server create --flavor ovn-migration-{{ resource_suffix }} --image $image_name \
+        openstack server create --flavor $flavor_name --image $image_name \
         --key-name ovn-migration-{{ resource_suffix }} \
         --nic port-id=ovn-migration-port-normal-int-{{ resource_suffix }}$index_suffix \
         --security-group ovn-migration-sg-{{ resource_suffix }} \
@@ -108,7 +114,7 @@ launch_normal_ext_instances(){
         [ "$num_hypervisors" == "1" ] && index_suffix="" || index_suffix="-$i"
         openstack port create  --network {{ public_network_name }} --vnic-type normal ovn-migration-port-normal-ext-{{ resource_suffix }}$index_suffix --security-group ovn-migration-sg-{{ resource_suffix }}
 
-        openstack server create --flavor ovn-migration-{{ resource_suffix }} --image $image_name \
+        openstack server create --flavor $flavor_name --image $image_name \
         --key-name ovn-migration-{{ resource_suffix }} \
         --nic port-id=ovn-migration-port-normal-ext-{{ resource_suffix }}$index_suffix \
         --security-group ovn-migration-sg-{{ resource_suffix }} \
@@ -122,7 +128,7 @@ launch_sriov_vf_int_instances(){
         [ "$num_hypervisors" == "1" ] && index_suffix="" || index_suffix="-$i"
         openstack port create  --network ovn-migration-net-{{ resource_suffix }} --vnic-type direct ovn-migration-port-vf-int-{{ resource_suffix }}$index_suffix --security-group ovn-migration-sg-{{ resource_suffix }}
 
-        openstack server create --flavor ovn-migration-{{ resource_suffix }} --image $image_name \
+        openstack server create --flavor $flavor_name --image $image_name \
         --key-name ovn-migration-{{ resource_suffix }} \
         --nic port-id=ovn-migration-port-vf-int-{{ resource_suffix }}$index_suffix \
         --security-group ovn-migration-sg-{{ resource_suffix }} \
@@ -136,7 +142,7 @@ launch_sriov_vf_ext_instances(){
         [ "$num_hypervisors" == "1" ] && index_suffix="" || index_suffix="-$i"
         openstack port create  --network {{ public_network_name }} --vnic-type direct ovn-migration-port-vf-ext-{{ resource_suffix }}$index_suffix --security-group ovn-migration-sg-{{ resource_suffix }}
 
-        openstack server create --flavor ovn-migration-{{ resource_suffix }} --image $image_name \
+        openstack server create --flavor $flavor_name --image $image_name \
         --key-name ovn-migration-{{ resource_suffix }} \
         --nic port-id=ovn-migration-port-vf-ext-{{ resource_suffix }}$index_suffix \
         --security-group ovn-migration-sg-{{ resource_suffix }} \
@@ -167,7 +173,7 @@ EOM
     do
         [ "$num_hypervisors" == "1" ] && index_suffix="" || index_suffix="-$i"
         openstack port create  --network ovn-migration-net-{{ resource_suffix }} --vnic-type direct-physical ovn-migration-port-pf-int-{{ resource_suffix }}$index_suffix --security-group ovn-migration-sg-{{ resource_suffix }}
-        openstack server create --flavor ovn-migration-{{ resource_suffix }} --image $image_name \
+        openstack server create --flavor $flavor_name --image $image_name \
         --key-name ovn-migration-{{ resource_suffix }} \
         --nic port-id=ovn-migration-port-pf-int-{{ resource_suffix }}$index_suffix \
         --security-group ovn-migration-sg-{{ resource_suffix }} \
@@ -183,7 +189,7 @@ EOM
     do
         [ "$num_hypervisors" == "1" ] && index_suffix="" || index_suffix="-$i"
         openstack port create  --network {{ public_network_name }} --vnic-type direct-physical ovn-migration-port-pf-ext-{{ resource_suffix }}$index_suffix --security-group ovn-migration-sg-{{ resource_suffix }}
-        openstack server create --flavor ovn-migration-{{ resource_suffix }} --image $image_name \
+        openstack server create --flavor $flavor_name --image $image_name \
         --key-name ovn-migration-{{ resource_suffix }} \
         --nic port-id=ovn-migration-port-pf-ext-{{ resource_suffix }}$index_suffix \
         --security-group ovn-migration-sg-{{ resource_suffix }} \
@@ -226,7 +232,7 @@ EOM
 	    sed -i "s/\(.*eth0\.\).*/\1$seg_id/" $template_file
 	fi
 
-        openstack server create --flavor ovn-migration-{{ resource_suffix }}  --image $image_name \
+        openstack server create --flavor $flavor_name  --image $image_name \
         --key-name ovn-migration-{{ resource_suffix }} \
 	--nic port-id=$parent_port ovn-migration-server-trunk$ext-{{ resource_suffix }}$index_suffix \
 	--config-drive True --user-data create_interface$index_suffix.yaml

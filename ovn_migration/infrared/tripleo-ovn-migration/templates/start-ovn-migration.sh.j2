@@ -7,6 +7,10 @@ export STACK_NAME={{ stack_name }}
 export UNDERCLOUD_NODE_USER={{ overcloud_ssh_user }}
 export OVERCLOUDRC_FILE={{ overcloudrc }}
 export VALIDATE_MIGRATION={{ validate_migration }}
-export IMAGE_NAME={{ image_to_boot }}
+if [ '{{ export_image }}' == 'True' ]; then
+  export IMAGE_NAME={{ image_to_boot }}
+  export FLAVOR_NAME={{ flavor_name }}
+  export SERVER_USER_NAME={{ server_user_name }}
+fi
 
 /usr/bin/ovn_migration.sh $1

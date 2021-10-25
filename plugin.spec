@@ -101,6 +101,16 @@ subparsers:
                       help: Image name to use
                       default: cirros-0.5.2-x86_64-disk.img
 
+                  flavor_name:
+                      type: Value
+                      help: Flavor name to use for creating VMs.
+                      default: customized_flavor
+
+                  export_image:
+                      type: Bool
+                      help: Whether to export image and flavor to OVN migration script. If it is set to False, the OVN migration script will use own values.
+                      default: True
+
                   server_user_name:
                       type: Value
                       help: User name to use for login to the resources VMs
