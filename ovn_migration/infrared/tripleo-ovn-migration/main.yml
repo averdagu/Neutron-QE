@@ -71,6 +71,9 @@
             validate_migration: "{{ install.validate_migration }}"
             set_geneve: "{{ install.geneve }}"
             export_image: "{{ install.export_image }}"
+            image_to_boot: "{{ install.image_name }}"
+            flavor_to_use: "{{ install.flavor_name }}"
+            server_user_name: "{{ install.server_user_name }}"
         when: install is defined
 
       - name: Set necessary facts (Tripleo deployment)
@@ -87,6 +90,9 @@
             validate_migration: "{{ validate_migration }}"
             set_geneve: "{{ geneve }}"
             export_image: "{{ export_image }}"
+            image_to_boot: "{{ image_name }}"
+            flavor_to_use: "{{ flavor_name }}"
+            server_user_name: "{{ server_user_name }}"
         when: install is not defined
 
       - name: Set overcloudrc
@@ -174,9 +180,6 @@
             - name: Set facts for resources creation (infrared deployment)
               set_fact:
                   public_net: "{{ install.external_network }}"
-                  image_to_boot: "{{ install.image_name }}"
-                  flavor_to_use: "{{ install.flavor_name }}"
-                  server_user_name: "{{ install.server_user_name }}"
                   resources_type: "{{ install.resources_type }}"
                   fix_mtu: "{{ install.fix_workload_mtu }}"
                   loadbalancer: "{{ install.create_loadbalancer }}"
@@ -185,9 +188,6 @@
             - name: Set facts for resources creation (Tripleo deployment)
               set_fact:
                   public_net: "{{ external_network }}"
-                  image_to_boot: "{{ image_name }}"
-                  flavor_to_use: "{{ flavor_name }}"
-                  server_user_name: "{{ server_user_name }}"
                   resources_type: "{{ resources_type }}"
                   fix_mtu: "{{ fix_workload_mtu }}"
                   loadbalancer: "{{ create_loadbalancer }}"
