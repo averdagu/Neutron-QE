@@ -170,3 +170,13 @@ subparsers:
                       type: Bool
                       help: Whether to create a Octavia load balancer and add workload VMs as members.
                       default: False
+
+                  patch_cirros_version:
+                      type: Bool
+                      help: Temporary workaround. Whether to update cirros version to 0.5.2 in migration playbooks.
+                      default: True
+
+                  patch_workload_creation_order:
+                      type: Bool
+                      help: Temporary workaround. Whether to create router before starting VMs in migration playbooks.
+                      default: True
