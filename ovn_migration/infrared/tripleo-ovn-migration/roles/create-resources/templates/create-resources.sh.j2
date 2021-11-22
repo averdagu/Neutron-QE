@@ -4,6 +4,7 @@ set -x
 
 source {{ overcloudrc }}
 resources_type={{ resources_type  }}
+openstack quota set --cores -1 --instances -1 --volumes -1  --networks -1 --subnets -1 --ports -1 --routers -1 --ram -1 --secgroups -1 --floating-ips -1 admin
 
 image_name={{ image_name }}
 flavor_name={{ flavor_name }}
