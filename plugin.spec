@@ -57,64 +57,10 @@ subparsers:
                       help: If the environment is after Fast Forward Upgrade
                       default: False
 
-                  create_resources:
-                      type: Bool
-                      help: Create resources to measure downtime
-                      default: True
-
-                  resources_type:
-                      type: Value
-                      help: |
-                          Type of resources we want to create
-                          normal: creates amount of VMs matching number of compute nodes
-                          normal_ext: same as normal but creates VMs on external network
-                          dvr: same as normal but creates DVR router instead of HA
-                          sriov_int_no_pf: as normal but creates also VMs with SR-IOV VF(direct) ports
-                          sriov_int: as sriov_int_no_pf but creates also VMs with SR-IOV PF(direct-physical) ports
-                          sriov_int_vf: creates VMs only with direct(VF) ports
-                          sriov_ext_no_pf: as sriov_int_no_pf but creates VMs connected to the external network
-                          sriov_ext: as sriov_ext_no_pf but creates also VMs with SR-IOV PF(direct-physical) ports
-                          sriov_ext_vf: creates VMs only with direct(VF) ports on external network
-                          trunk: create VMs with trunk ports
-                          trunk_ext: use VMs with trunk ports, launch VMs on external(aka provider) network
-                      choices:
-                        - normal
-                        - normal_ext
-                        - dvr
-                        - sriov_int_vf
-                        - sriov_int_no_pf
-                        - sriov_int
-                        - sriov_ext_vf
-                        - sriov_ext_no_pf
-                        - sriov_ext
-                        - trunk
-                        - trunk_ext
-                      default: normal
-
                   external_network:
                       type: Value
                       help: External network name to use
                       default: public
-
-                  image_name:
-                      type: Value
-                      help: Image name to use
-                      default: cirros-0.5.2-x86_64-disk.img
-
-                  flavor_name:
-                      type: Value
-                      help: Flavor name to use for creating VMs.
-                      default: customized_flavor
-
-                  export_image:
-                      type: Bool
-                      help: Whether to export image and flavor to OVN migration script. If it is set to False, the OVN migration script will use own values.
-                      default: True
-
-                  server_user_name:
-                      type: Value
-                      help: User name to use for login to the resources VMs
-                      default: cirros
 
                   stack_name:
                       type: Value
@@ -151,24 +97,87 @@ subparsers:
                       help: A string to use as a Neutron DNS domain.
                       default: openstackgate.local
 
-                  validate_migration:
-                      type: Bool
-                      help: Whether to run migration with validation or not.
-                      default: True
-
-                  fix_workload_mtu:
-                      type: Bool
-                      help: Whether to go over all workload VMs and reduce MTU before starting the migration.
-                      default: False
-
                   geneve:
                       type: Bool
                       help: Whether to change tunnel to geneve.
                       default: True
 
+            - title: Workload
+              options:
+                  create_resources:
+                      type: Bool
+                      help: Create resources to measure downtime
+                      default: True
+
+                  resources_type:
+                      type: Value
+                      help: |
+                          Type of resources we want to create
+                          normal: creates amount of VMs matching number of compute nodes
+                          normal_ext: same as normal but creates VMs on external network
+                          dvr: same as normal but creates DVR router instead of HA
+                          sriov_int_no_pf: as normal but creates also VMs with SR-IOV VF(direct) ports
+                          sriov_int: as sriov_int_no_pf but creates also VMs with SR-IOV PF(direct-physical) ports
+                          sriov_int_vf: creates VMs only with direct(VF) ports
+                          sriov_ext_no_pf: as sriov_int_no_pf but creates VMs connected to the external network
+                          sriov_ext: as sriov_ext_no_pf but creates also VMs with SR-IOV PF(direct-physical) ports
+                          sriov_ext_vf: creates VMs only with direct(VF) ports on external network
+                          trunk: create VMs with trunk ports
+                          trunk_ext: use VMs with trunk ports, launch VMs on external(aka provider) network
+                      choices:
+                        - normal
+                        - normal_ext
+                        - dvr
+                        - sriov_int_vf
+                        - sriov_int_no_pf
+                        - sriov_int
+                        - sriov_ext_vf
+                        - sriov_ext_no_pf
+                        - sriov_ext
+                        - trunk
+                        - trunk_ext
+                      default: normal
+
+                  image_name:
+                      type: Value
+                      help: Image name to use
+                      default: cirros-0.5.2-x86_64-disk.img
+
+                  flavor_name:
+                      type: Value
+                      help: Flavor name to use for creating VMs.
+                      default: customized_flavor
+
+                  export_image:
+                      type: Bool
+                      help: Whether to export image and flavor to OVN migration script. If it is set to False, the OVN migration script will use own values.
+                      default: True
+
+                  server_user_name:
+                      type: Value
+                      help: User name to use for login to the resources VMs
+                      default: cirros
+
                   create_loadbalancer:
                       type: Bool
                       help: Whether to create a Octavia load balancer and add workload VMs as members.
+                      default: False
+
+                  validate_migration:
+                      type: Bool
+                      help: Whether to run migration with validation or not.
+                      default: True
+
+            - title: Workarounds
+              options:
+                  fix_workload_mtu:
+                      type: Bool
+                      help: Whether to go over all workload VMs and reduce MTU before starting the migration.
+                      default: False
+
+                  fix_firewall_driver:
+                      type: Bool
+                      help: Whether to go over all compute nodes and set supported firewall driver (openvswitch) prior OVN migration
                       default: False
 
                   patch_cirros_version:

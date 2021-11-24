@@ -60,6 +60,24 @@
             sed -i 's/\(\-\-disk\ 1\)\ /\10/g' {{ workload_script }}
         when: install.patch_flavor_size|bool
 
+- name: Pre-migration configuration of nodes
+  hosts: overcloud_nodes
+  gather_facts: no
+  become: yes
+  tasks:
+      - name: Fix firewall driver on nodes with neutron_ovs_agent
+        block:
+            - name: Update openvswitch agent configuration file
+              shell: |
+                  ovs_agent_config=/var/lib/config-data/puppet-generated/neutron/etc/neutron/plugins/ml2/openvswitch_agent.ini
+                  [ -e $agent_config ] && crudini --set $ovs_agent_config securitygroup firewall_driver openvswitch
+
+            - name: Restart openvswitch agents
+              shell: |
+                  podman ps | grep neutron_ovs_agent
+                  [ $? -eq 0 ] && podman restart neutron_ovs_agent
+        when: install.fix_firewall_driver|bool
+
 - name: Prepare for migration
   hosts: undercloud
   tasks:
