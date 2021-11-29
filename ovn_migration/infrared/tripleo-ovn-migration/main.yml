@@ -101,6 +101,7 @@
             overcloud_ssh_user: "{{ install.overcloud_ssh_user }}"
             is_dvr: "{{ install.dvr }}"
             is_sriov: "{{ install.sriov }}"
+            is_after_ffu: "{{ install.after_ffu }}"
             support_jumbo_mtu: "{{ install.jumbo_mtu }}"
             has_networker: "{{ install.networker }}"
             has_vlan_transparency: "{{ install.vlan_transparency }}"
@@ -120,6 +121,7 @@
             overcloud_ssh_user: "{{ overcloud_ssh_user }}"
             is_dvr: "{{ dvr }}"
             is_sriov: "{{ sriov }}"
+            is_after_ffu: "{{ after_ffu }}"
             support_jumbo_mtu: "{{ jumbo_mtu }}"
             has_networker: "{{ networker }}"
             has_vlan_transparency: "{{ vlan_transparency }}"
@@ -151,16 +153,6 @@
                     set_fact:
                         is_infrared: True
 
-                  - name: Save the image reg
-                    set_fact:
-                        container_image_prepare:
-                            namespace: "{{ install.get('registry', {}).namespace|default(False)|ternary(install.get('registry', {}).namespace, install.get('registry', {}).mirror + '/' + 'rhosp' +  install.version) }}"
-                            prefix: "{{ install.registry.prefix|default('openstack') }}"
-                            tag: "{{ install.registry.tag|default('') }}"
-                            local_namespace: "{{ install.registry.local|default('') }}"
-                            is_dvr: "{{ install.dvr }}"
-                            is_sriov: "{{ install.sriov }}"
-                            is_after_ffu: "{{ install.after_ffu }}"
               when:
                   - install is defined
 
@@ -170,16 +162,6 @@
                     set_fact:
                         is_infrared: False
 
-                  - name: Save the image reg
-                    set_fact:
-                        container_image_prepare:
-                            namespace: "{{ registry_namespace }}"
-                            local_namespace: "{{ registry_localnamespace }}"
-                            prefix: "{{ registry_prefix }}"
-                            tag: "{{ registry_tag }}"
-                            is_dvr: "{{ dvr }}"
-                            is_sriov: "{{ sriov }}"
-                            is_after_ffu: "{{ after_ffu }}"
               when:
                   - install is not defined
 
@@ -188,13 +170,6 @@
            name: prepare-migration
         vars:
            infrared_deployment: "{{ is_infrared }}"
-           registry_namespace: "{{ container_image_prepare['namespace'] }}"
-           image_prefix: "{{ container_image_prepare['prefix'] }}"
-           image_tag: "{{ container_image_prepare['tag'] }}"
-           local_namespace: "{{ container_image_prepare['local_namespace'] }}"
-           is_dvr: "{{ container_image_prepare['is_dvr'] }}"
-           is_sriov: "{{ container_image_prepare['is_sriov'] }}"
-           is_after_ffu: "{{ container_image_prepare['is_after_ffu'] }}"
 
 - name: Boot few VMs to measure downtime
   hosts: undercloud
@@ -358,11 +333,3 @@
                   {{ ovn_migration_working_dir }}/delete-resources.sh
                   > {{ ovn_migration_working_dir }}/delete-resources.sh.log 2>&1
               when: is_sriov|bool
-
-#        always:
-#            - name: Fetch ovn_migration log directory
-#              synchronize:
-#                  src: "{{ ovn_migration_working_dir }}"
-#                  dest: "{{ inventory_dir }}"
-#                  mode: pull
-#              when: install is defined

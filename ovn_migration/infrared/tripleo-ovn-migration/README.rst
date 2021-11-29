@@ -10,14 +10,10 @@ Before using this plugin, first deploy an ML2OVS overcloud and then:
 1. On your undercloud, install python-networking-ovn-migration-tool package
 
 2. Run ::
-   $infrared plugin add "https://github.com/openstack/networking-ovn.git"
+   infrared plugin add https://code.engineering.redhat.com/gerrit/Neutron-QE
 
 3. Start migration by running::
-
-   $infrared  tripleo-ovn-migration  --version 16.1|16.2 \
---registry-namespace <REGISTRY_NAMESPACE> \
---registry-tag <TAG> \
---registry-prefix <PREFIX>
+   infrared  tripleo-ovn-migration
 
 Using this as a standalone playbook for tripleo deployments
 ===========================================================
@@ -29,4 +25,4 @@ In order to use this:
 undercloud_ip ansible_ssh_user=stack
 
 2. Run the playbook as:
-ansible-playbook main.yml  -i hosts -e install_from_package=True  -e registry_prefix=centos-binary -e registry_namespace=docker.io/tripleomaster  -e registry_localnamespace=192.168.24.1:8787/tripleomaster -e registry_tag=current-tripleo-rdo
+ansible-playbook main.yml  -i hosts
