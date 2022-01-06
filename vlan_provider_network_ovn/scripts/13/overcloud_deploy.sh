@@ -10,7 +10,7 @@ openstack overcloud deploy \
 -e /usr/share/openstack-tripleo-heat-templates/environments/cinder-backup.yaml \
 -e /usr/share/openstack-tripleo-heat-templates/environments/network-isolation.yaml \
 -e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-dvr-ha.yaml \
--e /home/stack/vlan_provider_network_ovn/network/network-environment.yaml \
+-e /home/stack/vlan_provider_network_ovn/network/network-environment-13.yaml \
 -e /home/stack/vlan_provider_network_ovn/roles/nodes-13.yaml \
 -e /home/stack/vlan_provider_network_ovn/ovn-extras.yaml \
 -e /home/stack/vlan_provider_network_ovn/l3_fip_qos.yaml \
