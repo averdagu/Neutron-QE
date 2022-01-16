@@ -40,9 +40,21 @@
             value=False
         ignore_errors: yes
 
-      - name: Set workload template script
-        set_fact:
-          workload_script: '/usr/share/ansible/networking-ovn-migration/playbooks/roles/resources/create/templates/create-resources.sh.j2'
+      - name: Get openstack version from puddle
+        shell: |
+            sed 's/RHOS-\(.*\)-RHEL.*/\1/g' /home/stack/core_puddle_version
+        register: puddle_version_output
+
+      - set_fact:
+            osp_major_version: "{{ puddle_version_output.stdout.split('.')[0] }}"
+
+      - set_fact:
+            workload_script: '/usr/share/ansible/networking-ovn-migration/playbooks/roles/resources/create/templates/create-resources.sh.j2'
+        when: osp_major_version | int < 17
+
+      - set_fact:
+            workload_script: '/usr/share/ansible/neutron-ovn-migration/playbooks/roles/resources/create/templates/create-resources.sh.j2'
+        when: osp_major_version | int >= 17
 
       - name: Apply workaround for cirros version
         shell: |
