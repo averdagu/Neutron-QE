@@ -49,12 +49,15 @@
             osp_major_version: "{{ puddle_version_output.stdout.split('.')[0] }}"
 
       - set_fact:
-            workload_script: '/usr/share/ansible/networking-ovn-migration/playbooks/roles/resources/create/templates/create-resources.sh.j2'
+            playbooks_path: '/usr/share/ansible/networking-ovn-migration/playbooks'
         when: osp_major_version | int < 17
 
       - set_fact:
-            workload_script: '/usr/share/ansible/neutron-ovn-migration/playbooks/roles/resources/create/templates/create-resources.sh.j2'
+            playbooks_path: '/usr/share/ansible/neutron-ovn-migration/playbooks'
         when: osp_major_version | int >= 17
+
+      - set_fact:
+            workload_script: "{{ playbooks_path }}/roles/resources/create/templates/create-resources.sh.j2"
 
       - name: Apply workaround for cirros version
         shell: |
@@ -260,7 +263,7 @@
                   ovn_migration_working_dir: /home/stack/ovn_migration
 
             - name: Copy the playbook files into ovn_migration working dir
-              command: cp -rf /usr/share/ansible/networking-ovn-migration/playbooks {{ ovn_migration_working_dir }}
+              command: cp -rf {{ playbooks_path }} {{ ovn_migration_working_dir }}
 
             - name: Set the public network name (infrared deployment)
               set_fact:
