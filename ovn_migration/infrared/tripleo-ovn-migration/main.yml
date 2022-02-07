@@ -59,17 +59,6 @@
       - set_fact:
             workload_script: "{{ playbooks_path }}/roles/resources/create/templates/create-resources.sh.j2"
 
-      - name: Apply workaround for cirros version
-        shell: |
-            sed -i 's/0\.4\.0/0.5.2/g' {{ workload_script }}
-        when: install.patch_cirros_version|bool
-
-      - name: Apply workaround for workload creation order
-        shell: |
-            sed -i '/router/d' {{ workload_script }}
-            sed -i "/^openstack\ subnet\ create/a openstack router create ovn-migration-router-\{\{ resource_suffix \}\}\nopenstack router set --external-gateway \{\{ public_network_name \}\} ovn-migration-router-\{\{ resource_suffix \}\}\nopenstack router add subnet ovn-migration-router-\{\{ resource_suffix \}\} ovn-migration-subnet-\{\{ resource_suffix \}\}" {{ workload_script }}
-        when: install.patch_workload_creation_order|bool
-
       - name: Apply workaround for flavor size
         shell: |
             sed -i 's/\(\-\-disk\ 1\)\ /\10/g' {{ workload_script }}

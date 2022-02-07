@@ -180,16 +180,6 @@ subparsers:
                       help: Whether to go over all compute nodes and set supported firewall driver (openvswitch) prior OVN migration
                       default: False
 
-                  patch_cirros_version:
-                      type: Bool
-                      help: Temporary workaround. Whether to update cirros version to 0.5.2 in neutron OVN migration playbooks.
-                      default: True
-
-                  patch_workload_creation_order:
-                      type: Bool
-                      help: Temporary workaround. Whether to create router before starting VMs in neutron OVN migration playbooks.
-                      default: True
-
                   patch_flavor_size:
                       type: Bool
                       help: Temporary workaround. Whether to change flavor disk size to 10 in neutron OVN migration playbooks.
