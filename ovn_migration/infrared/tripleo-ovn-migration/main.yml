@@ -64,6 +64,11 @@
             sed -i 's/\(\-\-disk\ 1\)\ /\10/g' {{ workload_script }}
         when: install.patch_flavor_size|bool
 
+      - name: Apply workaround for trunks cleanup
+        shell: |
+            sed -i '/Cleanup neutron trunk/a \ \ ignore_errors:\ True' {{ playbooks_path }}/roles/migration/tasks/cleanup-dataplane.yml
+        when: install.fix_trunks_cleanup|bool
+
 - name: Pre-migration configuration of nodes
   hosts: overcloud_nodes
   gather_facts: no

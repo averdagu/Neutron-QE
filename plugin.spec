@@ -184,3 +184,8 @@ subparsers:
                       type: Bool
                       help: Temporary workaround. Whether to change flavor disk size to 10 in neutron OVN migration playbooks.
                       default: False
+
+                  fix_trunks_cleanup:
+                      type: Bool
+                      help: Temporary workaround. Whether to ignore errors during trunks cleanup in case there are no trunks.
+                      default: True
