@@ -324,6 +324,8 @@ do
             if [ $num_attempts -gt 24 ]
             then
                 echo "VM is not up even after 2 minutes. Something is wrong"
+                # printing server information for debugging purposes
+                openstack server show ovn-migration-server-$type_suffix-{{ resource_suffix }}$index_suffix
                 exit 1
             fi
         done
@@ -402,6 +404,9 @@ do
             if [ $num_attempts -gt 60 ]
             then
                 echo "VM is not pingable. Something is wrong."
+                # printing server information for debugging purposes
+                server_id=$(openstack server list -f value | grep $server_ip | awk '{print $1}')
+                openstack console log show $server_id
                 exit 1
             fi
         fi
@@ -411,6 +416,9 @@ do
     -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
     if [ $? -ne 0 ]; then
         echo "VM not accessible via ssh. Something went wrong."
+        # printing server information for debugging purposes
+        server_id=$(openstack server list -f value | grep $server_ip | awk '{print $1}')
+        openstack console log show $server_id
         exit 1
     fi
 done
