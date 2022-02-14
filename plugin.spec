@@ -189,3 +189,8 @@ subparsers:
                       type: Bool
                       help: Temporary workaround. Whether to ignore errors during trunks cleanup in case there are no trunks.
                       default: True
+
+                  print_vm_console_on_fail:
+                      type: Bool
+                      help: Temporary workaround. Whether to inject to ovn migration playbooks an option to print workload VM console in case of failure
+                      default: True

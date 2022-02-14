@@ -69,6 +69,11 @@
             sed -i '/Cleanup neutron trunk/a \ \ ignore_errors:\ True' {{ playbooks_path }}/roles/migration/tasks/cleanup-dataplane.yml
         when: install.fix_trunks_cleanup|bool
 
+      - name: Inject code to print workload VM console
+        shell: |
+            sed -i "/exit\ 1/i server_id=\$(openstack server list -f value | grep \$server_ip | awk '{print \$1}')\nopenstack console log show \$server_id" {{ playbooks_path }}/roles/resources/create/templates/create-resources.sh.j2
+        when: install.print_vm_console_on_fail|bool
+
 - name: Pre-migration configuration of nodes
   hosts: overcloud_nodes
   gather_facts: no
