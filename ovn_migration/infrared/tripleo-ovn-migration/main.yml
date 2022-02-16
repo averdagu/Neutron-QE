@@ -74,24 +74,6 @@
             sed -i "/exit\ 1/i server_id=\$(openstack server list -f value | grep \$server_ip | awk '{print \$1}')\nopenstack console log show \$server_id" {{ playbooks_path }}/roles/resources/create/templates/create-resources.sh.j2
         when: install.print_vm_console_on_fail|bool
 
-- name: Pre-migration configuration of nodes
-  hosts: overcloud_nodes
-  gather_facts: no
-  become: yes
-  tasks:
-      - name: Fix firewall driver on nodes with neutron_ovs_agent
-        block:
-            - name: Update openvswitch agent configuration file
-              shell: |
-                  ovs_agent_config=/var/lib/config-data/puppet-generated/neutron/etc/neutron/plugins/ml2/openvswitch_agent.ini
-                  [ -e $agent_config ] && crudini --set $ovs_agent_config securitygroup firewall_driver openvswitch
-
-            - name: Restart openvswitch agents
-              shell: |
-                  podman ps | grep neutron_ovs_agent
-                  [ $? -eq 0 ] && podman restart neutron_ovs_agent
-        when: install.fix_firewall_driver|bool
-
 - name: Prepare for migration
   hosts: undercloud
   tasks:
@@ -250,6 +232,17 @@
                   sriov: is_sriov|bool
         when:
             - create_vms|bool
+
+- name: Pre-migration configuration of nodes
+  hosts: undercloud
+  tasks:
+      - name: Switch firewall driver
+        include_role:
+            name: switch-firewall-driver
+        vars:
+            node_ssh_user: "{{ overcloud_ssh_user }}"
+            ovn_migration_temp_dir: /home/stack/ovn_migration
+        when: install.fix_firewall_driver|bool
 
 - name: Kick start the migration
   hosts: undercloud

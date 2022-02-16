@@ -1,0 +1,149 @@
+#!/bin/bash
+
+set -x
+
+SSH_USER={{ node_ssh_user }}
+TARGET_FW_DRIVER=openvswitch
+
+. ~/stackrc
+
+declare -A node_ips
+openstack server list -c Name -c Networks -f value --flavor compute | sed 's/ctlplane=//' > /tmp/nodes_data
+while read -r node ip; do
+  node_ips[$node]=$ip
+done < /tmp/nodes_data
+
+. {{ overcloudrc }}
+
+{% raw %}
+openstack server list --all --long -c ID -c Host -f value > /tmp/vms_distribution
+# clean_list - list of hosts that have been processed
+clean_list=()
+hv_list_cmd="openstack hypervisor list --long -c 'Hypervisor Hostname' -c 'vCPUs Used' -f value"
+
+get_list_of_dirty_hosts(){
+  if [ `echo ${clean_list[@]} | wc -w` -gt 0 ];then
+          grep_str=$(echo ${clean_list[@]} | sed 's/\ /\\|/g')
+          eval $hv_list_cmd  | grep -v "$grep_str" |  cut -f1 -d' '
+  else
+          eval $hv_list_cmd | cut -f1 -d' '
+  fi
+}
+
+# Actually it's the least busy host, with minimal vCPUs in use
+# In case we find hosts without VMs we can switch the firewall driver without migrating VMs from it
+find_a_dirty_host(){
+  if [ `echo $clean_list | wc -w` -gt 0 ]; then
+          grep_str=$(echo ${clean_list[@]} | sed 's/\ /\\|/g')
+          eval $hv_list_cmd | grep -v "$grep_str" | sort -k2 -g | head -1 | cut -f1 -d' '
+  else
+          eval $hv_list_cmd | sort -k2 -g | head -1 | cut -f1 -d' '
+  fi
+}
+
+migrate_servers_one_by_one_from_host(){
+  host=$1
+  echo Trying to migrate all servers from $host
+  servers=$(openstack server list --all --host $host -c ID -f value)
+  for server in $servers; do
+      if [ "$2" == "to_clean_nodes" ]; then
+          index=$(($RANDOM % ${#clean_list[@]}))
+          host_param="--host ${clean_list[$index]}"
+      fi
+      echo Live migrating server $server from $host
+      timeout 120 openstack server migrate $server --live-migration --block-migration $host_param --wait
+      sleep 5
+  done
+}
+
+function host_is_free(){
+  node=$1
+  num_servers=$(openstack server list --all --host $node -f value | wc -l)
+  [ $num_servers -eq 0 ] && echo Host $node is free || echo Host $node still has VMs
+  return $num_servers
+}
+
+get_current_firewall_driver(){
+  node=$(echo $1 | cut -d'.' -f1)
+  timeout 10 ssh $SSH_USER@${node_ips[$node]} sudo podman exec neutron_ovs_agent crudini --get /etc/neutron/plugins/ml2/openvswitch_agent.ini securitygroup firewall_driver
+}
+
+set_firewall_driver(){
+  node=$(echo $1 | cut -d'.' -f1)
+  driver=openvswitch
+  echo Setting firewall driver on $node to $driver
+  timeout 10 ssh $SSH_USER@${node_ips[$node]} sudo crudini --set /var/lib/config-data/puppet-generated/neutron/etc/neutron/plugins/ml2/openvswitch_agent.ini securitygroup firewall_driver $driver
+  timeout 10 ssh $SSH_USER@${node_ips[$node]} sudo podman restart neutron_ovs_agent
+  sleep 2
+}
+
+check_for_hybrid_connection_leftovers(){
+  node=$(echo $1 | cut -d'.' -f1)
+  echo Checking for leftovers of old firewall driver on $node
+  nics=$(timeout 10 ssh $SSH_USER@${node_ips[$node]} ip addr | grep -v '^\ ' | cut -d ' ' -f 2)
+  for nic in $nics; do
+    [[ "$nic" =~ qbr|qvb|qvo ]] && echo Bad nic $nic found && exit 1
+  done
+  echo No leftovers found on $node
+}
+
+update_lists(){
+  clean_list+=($1)
+  dirty_list=($(get_list_of_dirty_hosts))
+  # When we have already at least one clean node, then next VMs should be migrated to clean nodes
+  direction="to_clean_nodes"
+}
+
+# dirty_hosts - list of hosts to be processed
+dirty_list=($(get_list_of_dirty_hosts))
+
+while [ ${#dirty_list[@]} -gt 0 ]; do
+  host=$(find_a_dirty_host)
+  current_driver=$(get_current_firewall_driver $host)
+  if [ "$current_driver" == "$TARGET_FW_DRIVER" ];then
+    echo The host is already using $TARGET_FW_DRIVER firewall driver
+    update_lists $host
+    continue
+  fi
+  attempt=0
+  while true; do
+    attempt=$((attempt + 1))
+    migrate_servers_one_by_one_from_host $host $direction
+    # TBD, what if we have vms which are shut down or in error state?
+    if host_is_free $host ; then
+      set_firewall_driver $host
+      current_driver=$(get_current_firewall_driver $host)
+      [ "$current_driver" != "$TARGET_FW_DRIVER" ] && echo Failed to switch firewall driver on $host, something went wrong && exit 1
+      echo Firewall driver on $host was changed to $TARGET_FW_DRIVER
+      update_lists $host
+      distribute_vms=yes
+      break
+    else
+      [ $attempt -ge 5 ] && echo Failed to free $host in order to switch firewall. Cant proceed && exit 1
+      sleep 30
+    fi
+  done
+done
+
+openstack server list --all --long
+
+if [ "$distribute_vms" == "yes" ]; then
+  while read -r vm_id vm_host; do
+    timeout 120 openstack server migrate $vm_id --live-migration --block-migration --host $vm_host --wait
+    sleep 5
+  done < /tmp/vms_distribution
+fi
+
+openstack server list --all --long
+
+hosts=$(eval $hv_list_cmd | cut -f1 -d' ')
+for host in $hosts; do
+  num_vms=$(openstack server list --all --host $host -f value | wc -l)
+  # Just print a message, do not fail
+  [ $num_vms -eq 0 ] && echo The node $host does not have VMs
+done
+
+for host in $hosts; do
+  check_for_hybrid_connection_leftovers $host
+done
+{% endraw %}
