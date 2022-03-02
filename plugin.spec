@@ -168,6 +168,11 @@ subparsers:
                       help: Whether to run migration with validation or not.
                       default: True
 
+                  allowed_packet_loss:
+                      type: Value
+                      help: How many pinger requests to workload are allowed to fail.
+                      default: 6
+
             - title: Workarounds
               options:
                   fix_workload_mtu:

@@ -3,8 +3,7 @@ set -x
 
 resources_type={{ resources_type }}
 server_user_name={{ server_user_name }}
-
-: ${LOSS_THRESHOLD_PERCENT:=1}
+packet_loss_threshold={{ packet_loss_threshold }}
 
 check_if_pinger_stopped(){
     [ "$2" == "quick" ] && wait_time=1 || wait_time=10
@@ -18,12 +17,12 @@ check_if_pinger_stopped(){
 }
 
 validate(){
-    PING_RESULT=$( grep 'packet loss' $1 | sed 's/.*,\s\(.*\)%.*$/\1/' )
+    packets_total=$( grep 'packet loss' $1 | cut -d' ' -f 1 )
+    packets_received=$( grep 'packet loss' $1 | cut -d' ' -f 4 )
+    ping_result=$(( packets_total - packets_received ))
 
-    if [ $(echo "${PING_RESULT} > ${LOSS_THRESHOLD_PERCENT}" | bc ) -ne 0 ]; then
-        LC_NUMERIC=C \
-                  printf "$1: Ping loss higher than %.0f %% detected (%.0f %%)\n" \
-                  ${LOSS_THRESHOLD_PERCENT} ${PING_RESULT}
+    if [ $ping_result -gt $packet_loss_threshold ]; then
+        echo "$1: Ping loss higher than $packet_loss_threshold packets detected ($ping_result packets)"
         exit 1
     fi
     echo "$1: Passed validation"

@@ -9,3 +9,4 @@ server_user_name: "{{ server_user_name }}"
 overcloudrc: "{{ overcloudrc }}"
 resource_suffix: pinger
 resources_type: normal
+packet_loss_threshold: "{{ packet_loss_threshold }}"
