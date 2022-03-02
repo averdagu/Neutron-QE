@@ -44,12 +44,15 @@
   shell: >
       nohup {{ ovn_migration_temp_dir }}/start-pinger.sh </dev/null >/dev/null 2>&1 &
   changed_when: False
+  when: not shutdown_workload|bool
 
 - name: Start requester in background
   shell: >
       nohup {{ ovn_migration_temp_dir }}/start-requester.sh </dev/null >/dev/null 2>&1 &
   changed_when: False
-  when: loadbalancer|bool
+  when:
+      - loadbalancer|bool
+      - not shutdown_workload|bool
 
 - name: Create network validate script
   template:

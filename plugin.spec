@@ -173,6 +173,11 @@ subparsers:
                       help: How many pinger requests to workload are allowed to fail.
                       default: 6
 
+                  shutdown_workload:
+                      type: Bool
+                      help: Whether to keep workload down during the OVN migration
+                      default: False
+
             - title: Workarounds
               options:
                   fix_workload_mtu:

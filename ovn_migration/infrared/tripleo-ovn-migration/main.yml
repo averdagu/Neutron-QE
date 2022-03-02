@@ -232,6 +232,13 @@
                   ovn_migration_temp_dir: /home/stack/ovn_migration
                   dvr: is_dvr|bool
                   sriov: is_sriov|bool
+
+            - name: Stop existing VMs
+              shell: |
+                  source {{ overcloudrc }}
+                  openstack server list --all -c ID -f value | xargs -n1 openstack server stop || true
+              when: shutdown_workload|bool
+
         when:
             - create_vms|bool
 
@@ -295,6 +302,32 @@
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/start-ovn-migration.sh start-migration
                   > {{ ovn_migration_working_dir }}/start-ovn-migration.sh.log 2>&1
+
+            - name: Get status of existing VMs
+              shell: |
+                  source {{ overcloudrc }}
+                  openstack server list
+              when:
+                  - create_vms|bool
+                  - shutdown_workload|bool
+
+            - name: Start existing VMs
+              shell: |
+                  source {{ overcloudrc }}
+                  openstack server list --all -c ID -f value | xargs -n1 openstack server start || true
+                  sleep 90
+              when:
+                  - create_vms|bool
+                  - shutdown_workload|bool
+
+            - name: Start pinger in background
+              shell: |
+                  nohup {{ ovn_migration_working_dir }}/start-pinger.sh </dev/null >/dev/null 2>&1 &
+                  sleep 120
+              changed_when: False
+              when:
+                  - create_vms|bool
+                  - shutdown_workload|bool
 
             - name: Stop pinger if started
               shell:
