@@ -136,27 +136,27 @@ subparsers:
                         - sriov_ext
                         - trunk
                         - trunk_ext
-                      default: normal
+                      default: trunk_ext
 
                   image_name:
                       type: Value
                       help: Image name to use
-                      default: cirros-0.5.2-x86_64-disk.img
+                      default: tempest_image
 
                   flavor_name:
                       type: Value
                       help: Flavor name to use for creating VMs.
-                      default: customized_flavor
+                      default: guest_image
 
                   export_image:
                       type: Bool
                       help: Whether to export image and flavor to OVN migration script. If it is set to False, the OVN migration script will use own values.
-                      default: True
+                      default: False
 
                   server_user_name:
                       type: Value
                       help: User name to use for login to the resources VMs
-                      default: cirros
+                      default: cloud-user
 
                   create_loadbalancer:
                       type: Bool
