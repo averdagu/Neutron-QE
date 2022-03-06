@@ -163,9 +163,9 @@ subparsers:
                       help: Whether to create a Octavia load balancer and add workload VMs as members.
                       default: False
 
-                  validate_migration:
+                  create_validation_workload:
                       type: Bool
-                      help: Whether to run migration with validation or not.
+                      help: Whether to create pre/post-migration validation workload (in addition to the pinger workload defined by create_resources parameter).
                       default: True
 
                   allowed_packet_loss:

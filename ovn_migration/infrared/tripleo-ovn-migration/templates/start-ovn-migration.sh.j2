@@ -6,7 +6,7 @@ export OPT_WORKDIR=/home/stack/ovn_migration
 export STACK_NAME={{ stack_name }}
 export UNDERCLOUD_NODE_USER={{ overcloud_ssh_user }}
 export OVERCLOUDRC_FILE={{ overcloudrc }}
-export VALIDATE_MIGRATION={{ validate_migration }}
+export VALIDATE_MIGRATION={{ create_validation_workload }}
 if [ '{{ export_image }}' == 'True' ]; then
   export IMAGE_NAME={{ image_to_boot }}
   export FLAVOR_NAME={{ flavor_to_use }}
