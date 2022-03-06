@@ -193,6 +193,7 @@
                   fix_mtu: "{{ install.fix_workload_mtu }}"
                   loadbalancer: "{{ install.create_loadbalancer }}"
                   packet_loss_threshold: "{{ install.allowed_packet_loss }}"
+                  shutdown_workload: "{{ install.shutdown_workload }}"
               when: install is defined
 
             - name: Set facts for resources creation (Tripleo deployment)
@@ -202,6 +203,7 @@
                   fix_mtu: "{{ fix_workload_mtu }}"
                   loadbalancer: "{{ create_loadbalancer }}"
                   packet_loss_threshold: "{{ allowed_packet_loss }}"
+                  shutdown_workload: "{{ shutdown_workload }}"
               when: install is not defined
 
             - name: Fail if resources_type is dvr while environment is SR-IOV
