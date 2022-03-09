@@ -203,8 +203,11 @@ declare -a SUBPORT_IPS
 launch_trunk_instances(){
     network=$1
 
-    mtu=$(openstack network show $network -c mtu -f value)
-    network_type=$(openstack network create ovn-migration-net-vlan-{{ resource_suffix }} --mtu $mtu -f value -c 'provider:network_type')
+    mtu_parent=$(openstack network show $network -c mtu -f value)
+    network_type=$(openstack network create ovn-migration-net-vlan-{{ resource_suffix }} -f value -c 'provider:network_type')
+    mtu_subport=$(openstack network show ovn-migration-net-vlan-{{ resource_suffix }} -c mtu -f value)
+    [ "$mtu_parent" -lt "$mtu_subport" ] && openstack network set --mtu $mtu_parent  ovn-migration-net-vlan-{{ resource_suffix }}
+
     if [ "$network_type" == "vlan" ]
     then
         seg_id=$(openstack network show ovn-migration-net-vlan-{{ resource_suffix }} -f value -c 'provider:segmentation_id')
