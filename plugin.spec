@@ -171,7 +171,7 @@ subparsers:
                   allowed_packet_loss:
                       type: Value
                       help: How many pinger requests to workload are allowed to fail.
-                      default: 6
+                      default: 10
 
                   shutdown_workload:
                       type: Bool
