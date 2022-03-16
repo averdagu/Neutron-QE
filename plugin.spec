@@ -180,6 +180,11 @@ subparsers:
 
             - title: Workarounds
               options:
+                  migrate:
+                      type: Bool
+                      help: Whether to migrate to OVN. The option allows to run some configuration scenarios without performing the migration itself.
+                      default: True
+
                   fix_workload_mtu:
                       type: Bool
                       help: Whether to go over all workload VMs and reduce MTU before starting the migration.

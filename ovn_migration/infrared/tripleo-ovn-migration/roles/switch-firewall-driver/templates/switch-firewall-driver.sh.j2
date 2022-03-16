@@ -46,12 +46,8 @@ migrate_servers_one_by_one_from_host(){
   echo Trying to migrate all servers from $host
   servers=$(openstack server list --all --host $host -c ID -f value)
   for server in $servers; do
-      if [ "$2" == "to_clean_nodes" ]; then
-          index=$(($RANDOM % ${#clean_list[@]}))
-          host_param="--host ${clean_list[$index]}"
-      fi
       echo Live migrating server $server from $host
-      timeout 120 openstack server migrate $server --live-migration --block-migration $host_param --wait
+      timeout 120 openstack server migrate $server --live-migration --block-migration --wait
       sleep 5
   done
 }
@@ -90,8 +86,6 @@ check_for_hybrid_connection_leftovers(){
 update_lists(){
   clean_list+=($1)
   dirty_list=($(get_list_of_dirty_hosts))
-  # When we have already at least one clean node, then next VMs should be migrated to clean nodes
-  direction="to_clean_nodes"
 }
 
 # dirty_hosts - list of hosts to be processed
@@ -108,7 +102,7 @@ while [ ${#dirty_list[@]} -gt 0 ]; do
   attempt=0
   while true; do
     attempt=$((attempt + 1))
-    migrate_servers_one_by_one_from_host $host $direction
+    migrate_servers_one_by_one_from_host $host
     # TBD, what if we have vms which are shut down or in error state?
     if host_is_free $host ; then
       set_firewall_driver $host

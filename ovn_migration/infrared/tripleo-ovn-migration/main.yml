@@ -5,8 +5,17 @@
 - name: Set result file
   hosts: undercloud
   tasks:
-     - name: Set result to failed until we reach the end
-       shell: echo "failed" > /home/stack/migration_result
+      - name: Set necessary facts (infrared deployment)
+        set_fact:
+            migrate: "{{ install.migrate }}"
+        when: install is defined
+      - name: Set necessary facts (Tripleo deployment)
+        set_fact:
+            migrate: "{{ migrate }}"
+        when: install is not defined
+      - name: Set result to failed until we reach the end
+        shell: echo "failed" > /home/stack/migration_result
+        when: migrate|bool
 
 - name: Install migration tool
   hosts: undercloud
@@ -59,20 +68,23 @@
       - set_fact:
             workload_script: "{{ playbooks_path }}/roles/resources/create/templates/create-resources.sh.j2"
 
-      - name: Apply workaround for flavor size
-        shell: |
-            sed -i 's/\(\-\-disk\ 1\)\ /\10/g' {{ workload_script }}
-        when: install.patch_flavor_size|bool
+      - name: Apply workarounds
+        block:
+            - name: Apply workaround for flavor size
+              shell: |
+                  sed -i 's/\(\-\-disk\ 1\)\ /\10/g' {{ workload_script }}
+              when: install.patch_flavor_size|bool
 
-      - name: Apply workaround for trunks cleanup
-        shell: |
-            sed -i '/Cleanup neutron trunk/a \ \ ignore_errors:\ True' {{ playbooks_path }}/roles/migration/tasks/cleanup-dataplane.yml
-        when: install.fix_trunks_cleanup|bool
+            - name: Apply workaround for trunks cleanup
+              shell: |
+                  sed -i '/Cleanup neutron trunk/a \ \ ignore_errors:\ True' {{ playbooks_path }}/roles/migration/tasks/cleanup-dataplane.yml
+              when: install.fix_trunks_cleanup|bool
 
-      - name: Inject code to print workload VM console
-        shell: |
-            sed -i "/exit\ 1/i server_id=\$(openstack server list -f value | grep \$server_ip | awk '{print \$1}')\nopenstack console log show \$server_id" {{ playbooks_path }}/roles/resources/create/templates/create-resources.sh.j2
-        when: install.print_vm_console_on_fail|bool
+            - name: Inject code to print workload VM console
+              shell: |
+                  sed -i "/exit\ 1/i server_id=\$(openstack server list -f value | grep \$server_ip | awk '{print \$1}')\nopenstack console log show \$server_id" {{ playbooks_path }}/roles/resources/create/templates/create-resources.sh.j2
+              when: install.print_vm_console_on_fail|bool
+        when: migrate|bool
 
 - name: Prepare for migration
   hosts: undercloud
@@ -166,6 +178,7 @@
            name: prepare-migration
         vars:
            infrared_deployment: "{{ is_infrared }}"
+        when: migrate|bool
 
 - name: Boot few VMs to measure downtime
   hosts: undercloud
@@ -241,8 +254,7 @@
                   openstack server list --all -c ID -f value | xargs -n1 openstack server stop || true
               when: shutdown_workload|bool
 
-        when:
-            - create_vms|bool
+        when: create_vms|bool
 
 - name: Pre-migration configuration of nodes
   hosts: undercloud
@@ -377,3 +389,4 @@
                   {{ ovn_migration_working_dir }}/delete-resources.sh
                   > {{ ovn_migration_working_dir }}/delete-resources.sh.log 2>&1
               when: is_sriov|bool
+        when: migrate|bool
