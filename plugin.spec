@@ -178,6 +178,11 @@ subparsers:
                       help: Whether to keep workload down during the OVN migration
                       default: False
 
+                  reduce_mtu:
+                      type: Bool
+                      help: Whether to reduce MTU since GENEVE has bigger header than VxLAN. Note, in some cases it may be useful to set it to False and keep current MTU.
+                      default: True
+
             - title: Workarounds
               options:
                   migrate:

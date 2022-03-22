@@ -8,10 +8,12 @@
       - name: Set necessary facts (infrared deployment)
         set_fact:
             migrate: "{{ install.migrate }}"
+            reduce_mtu: "{{ install.reduce_mtu }}"
         when: install is defined
       - name: Set necessary facts (Tripleo deployment)
         set_fact:
             migrate: "{{ migrate }}"
+            reduce_mtu: "{{ reduce_mtu }}"
         when: install is not defined
       - name: Set result to failed until we reach the end
         shell: echo "failed" > /home/stack/migration_result
@@ -305,11 +307,13 @@
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/start-ovn-migration.sh setup-mtu-t1 > {{ ovn_migration_working_dir }}/setup-mtu-t1.log 2>&1
+              when: reduce_mtu|bool
 
             - name: Reduce mtu of the pre migration networks
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/start-ovn-migration.sh reduce-mtu > {{ ovn_migration_working_dir }}/reduce-mtu.log 2>&1
+              when: reduce_mtu|bool
 
             - name: Start the migration process
               shell:
