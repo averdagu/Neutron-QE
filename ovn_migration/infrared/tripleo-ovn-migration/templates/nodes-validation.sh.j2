@@ -1,0 +1,45 @@
+#!/bin/bash
+set -x
+
+SSH_USER={{ overcloud_ssh_user }}
+
+. /home/stack/stackrc
+
+declare -A node_ips
+openstack server list -c Name -c Networks -f value | sed 's/ctlplane=//' > /tmp/nodes_data
+while read -r node ip; do
+    node_ips[$node]=$ip
+done < /tmp/nodes_data
+
+check_for_ovs_nics(){
+    node=$(echo $1 | cut -d'.' -f1)
+    echo Checking for ovs-specific NICs on $node
+    nics=$(timeout 10 ssh $SSH_USER@${node_ips[$node]} ip addr | grep -v '^\ ' | cut -d ' ' -f 2)
+    for nic in $nics; do
+        if [[ "$nic" =~ qbr|qvb|qvo|qr|qg|fg|sg ]]; then
+	    echo OVS-specific NIC $nic found on $node
+	    return_value=1
+	fi
+    done
+}
+
+check_for_ovs_namespaces(){
+    node=$(echo $1 | cut -d'.' -f1)
+    echo Checking for ovs namespaces on $node
+    namespaces=$(timeout 10 ssh $SSH_USER@${node_ips[$node]} ip net | awk '{print $1}')
+    for ns in $namespaces; do
+        if ! [[ "$ns" =~ ovnmeta  ]]; then
+	    echo OVS-specific namespace found: $ns on $node
+	    return_value=1
+	fi
+    done
+}
+
+return_value=0
+for node in `cat /tmp/nodes_data | awk '{print $1}'`; do
+    check_for_ovs_namespaces $node
+    check_for_ovs_nics $node
+done
+if [ $return_value -ne 0 ]; then
+    exit $return_value
+fi

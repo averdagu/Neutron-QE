@@ -1,0 +1,80 @@
+#!/bin/bash
+set -x
+. {{ overcloudrc }}
+server_user_name={{ server_user_name }}
+
+servers=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | awk '{print $1}')
+
+validate_vms_connectivity(){
+  for server_ip in `cat /home/stack/ovn_migration/server_fips`; do
+    echo Pinging $server_ip
+    ping -c 3 $server_ip
+    [ $? -ne 0 ] && echo Server ip $server_ip is not responding. something went wrong && exit 1
+    echo Ping test succeeded
+    echo Testing ssh to $server_ip
+    timeout 20 ssh -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
+    if [ $? -ne 0 ]; then
+        echo "VM address $server_ip is not accessible via ssh. Something went wrong."
+        exit 1
+    fi
+    echo SSH test succeeded
+  done
+}
+
+if [ "{{ validate_vm_live_migration }}" == "True" ]; then
+  for server in $servers; do
+    echo server id = $server
+    host=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
+    echo host = $host
+    echo execute live migration command
+    timeout 120 openstack server migrate $server --live-migration --block-migration --wait
+    host_new=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
+    echo new host = $host_new
+    [ "$host" == "$host_new" ] && echo Server $server failed to migrate, something went wrong && exit 1
+    echo Server migrated successfully from $host to $host_new
+  done
+  validate_vms_connectivity
+fi
+
+if [ "{{ validate_vm_reboot }}" == "True" ]; then
+  for server in $servers; do
+    echo server id = $server
+    start_status=$(openstack server show -c status -f value $server)
+    echo starting status = $start_status
+    [ "$start_status" != "ACTIVE" ] && echo Starting VM status is not ACTIVE. Something went wrong && exit 1
+    echo execute server stop command
+    openstack server stop $server
+    interim_status=$(openstack server show -c status -f value $server)
+    echo interim status = $interim_status
+    [ "$interim_status" != "SHUTOFF" ] && echo Interim VM status is not SHUTOFF. Something went wrong && exit 1
+    echo execute server start command
+    openstack server start $server
+
+    # Wait till the VM allows ssh connections
+    vm_status="down"
+    num_attempts=0
+    while [ "$vm_status" != "up" ]
+    do
+        num_attempts=$((num_attempts+1))
+        sleep 5
+        openstack console log show $server | grep "login:"
+        if [ "$?" == "0" ]
+        then
+            vm_status="up"
+        else
+            if [ $num_attempts -gt 24 ]
+            then
+                echo "VM is not up with login prompt even after 2 minutes. Something is wrong."
+                # Even though something seems wrong, lets try and continue with status and connectivity checks.
+                break
+            fi
+        fi
+    done
+
+    final_status=$(openstack server show -c status -f value $server)
+    echo final status = $final_status
+    [ "$final_status" != "ACTIVE" ] && echo Final VM status is not ACTIVE. Something went wrong && exit 1
+  done
+  validate_vms_connectivity
+fi

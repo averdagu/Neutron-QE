@@ -183,6 +183,26 @@ subparsers:
                       help: Whether to reduce MTU since GENEVE has bigger header than VxLAN. Note, in some cases it may be useful to set it to False and keep current MTU.
                       default: True
 
+                  validate_agents:
+                      type: Bool
+                      help: Whether to validate agents health before and after migration to OVN and check that OVS-related agents are removed.
+                      default: True
+
+                  validate_nodes:
+                      type: Bool
+                      help: Whether to check if nodes have OVS-specific leftovers (namespaces and interfaces) after migration to OVN.
+                      default: False
+
+                  validate_vm_live_migration:
+                      type: Bool
+                      help: Whether to live migrate workload VMs after migration to OVN and check connectivity.
+                      default: False
+
+                  validate_vm_reboot:
+                      type: Bool
+                      help: Whether to reboot workload VMs after migration to OVN and check connectivity.
+                      default: False
+
             - title: Workarounds
               options:
                   migrate:

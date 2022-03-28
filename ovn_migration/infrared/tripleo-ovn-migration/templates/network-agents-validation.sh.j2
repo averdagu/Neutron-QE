@@ -1,0 +1,35 @@
+#!/bin/bash
+set -x
+. {{ overcloudrc }}
+
+openstack network agent list -c Alive -c Binary -f value | tee /tmp/agents
+
+case "$1" in
+    ovs)
+        while read -r status agent; do
+            if [ "$status" != "True" ]; then
+	         echo "Bad status of '${agent}': '$status'"
+		 exit 1
+	    fi
+        done < /tmp/agents
+        ;;
+
+    ovn)
+        valid_ovn_agents='ovn-controller networking-ovn-metadata-agent neutron-sriov-nic-agent'
+        while read -r status agent; do
+            if [[ "$valid_ovn_agents" =~ $agent ]]; then
+                if [ "$status" != "True" ]; then
+		    echo "Bad status of '${agent}': '$status'"
+		    exit 1
+		fi
+            else
+                echo "Network agent '$agent' is invalid for OVN"
+                exit 1
+            fi
+        done < /tmp/agents
+        ;;
+
+    *)
+        echo "Mechanism driver '$1' is invalid"
+        exit 1
+esac
