@@ -166,7 +166,7 @@ subparsers:
                   create_validation_workload:
                       type: Bool
                       help: Whether to create pre/post-migration validation workload (in addition to the pinger workload defined by create_resources parameter).
-                      default: True
+                      default: False
 
                   allowed_packet_loss:
                       type: Value
