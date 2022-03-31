@@ -59,15 +59,15 @@ openstack security group rule create --ingress --protocol tcp --dst-port 22  ovn
 
 [ "{{ loadbalancer }}" == "True" ] && openstack security group rule create --ingress --protocol tcp --dst-port 80  ovn-migration-sg-{{ resource_suffix }}
 
-if [ "$resources_type" == "sriov_int" ]
+if [[ "$resources_type" =~ "sriov_int" ]]
 then
     vlan_id=$(openstack network create ovn-migration-net-{{ resource_suffix }} | awk -F'[ \t]*\\|[ \t]*' '/ provider:segmentation_id / {print $3}')
-elif [ "$resources_type" == "sriov_ext" ]
+elif [[ "$resources_type" =~ "sriov_ext" ]]
 then
     vlan_id=$(openstack network show {{ public_network_name }} | awk -F'[ \t]*\\|[ \t]*' '/ provider:segmentation_id / {print $3}')
-elif [[ "$resources_type" =~ "trunk" ]]
+elif [[ "$resources_type" =~ ^trunk ]]
 then
-    vlan_id=1001
+    subport_vlan_id=1001
     openstack network create ovn-migration-net-{{ resource_suffix }}
 else
     openstack network create ovn-migration-net-{{ resource_suffix }}
@@ -77,10 +77,11 @@ if [[ "$resources_type" =~ "sriov" ]]
 then
     bootproto="dhcp"
     persistent_dhclient="yes"
-elif [[ "$resources_type" =~ "trunk" ]]
+fi
+if [[ "$resources_type" =~ "trunk" ]]
 then
-    bootproto="none"
-    persistent_dhclient="no"
+    subport_bootproto="none"
+    subport_persistent_dhclient="no"
 fi
 
 openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  --subnet-range 192.168.168.0/24 ovn-migration-subnet-{{ resource_suffix }}
@@ -165,6 +166,20 @@ write_files:
 runcmd:
   - [ sh, -c , \"systemctl restart NetworkManager\" ]
 "
+create_interface_template_trunk_subport="#cloud-config
+write_files:
+  - path: /etc/sysconfig/network-scripts/ifcfg-eth0.$subport_vlan_id
+    owner: \"root\"
+    permissions: \"777\"
+    content: |
+      DEVICE=eth0.$subport_vlan_id
+      BOOTPROTO=$subport_bootproto
+      ONBOOT=yes
+      VLAN=yes
+      PERSISTENT_DHCLIENT=$subport_persistent_dhclient
+runcmd:
+  - [ sh, -c , \"systemctl restart NetworkManager\" ]
+"
 
 launch_sriov_pf_int_instances(){
     /bin/cat <<EOM > create_interface.yaml
@@ -198,7 +213,7 @@ EOM
     done
 }
 
-declare -a FIPS
+declare -a TRUNK_VMS_FIPS
 declare -a SUBPORT_IPS
 launch_trunk_instances(){
     network=$1
@@ -213,13 +228,13 @@ launch_trunk_instances(){
         seg_id=$(openstack network show ovn-migration-net-vlan-{{ resource_suffix }} -f value -c 'provider:segmentation_id')
 	segmentation="inherit"
     else
-        segmentation="vlan,segmentation-id=$vlan_id"
+        segmentation="vlan,segmentation-id=$subport_vlan_id"
     fi
     openstack subnet create --network ovn-migration-net-vlan-{{ resource_suffix }} --subnet-range 192.168.200.0/24 subnet-vlan
     for i in $(seq 1 $num_hypervisors)
     do
         [ "$num_hypervisors" == "1" ] && index_suffix="" || index_suffix="-$i"
-        [ "$resources_type" == "trunk_ext" ] && ext="-ext"
+        [[ "$resources_type" =~ "ext" ]] && ext="-ext"
 	parent_port=ovn-migration-port-trunk$ext-{{ resource_suffix }}$index_suffix
         openstack port create  --network $network  --vnic-type normal $parent_port --security-group ovn-migration-sg-{{ resource_suffix }}
         parent_mac="$( openstack port show $parent_port | awk '/ mac_address / { print $4 }' )"
@@ -229,7 +244,7 @@ launch_trunk_instances(){
 	SUBPORT_IPS[$i]=$IP
 	template_file=create_interface$index_suffix.yaml
         /bin/cat <<EOM > $template_file
-$create_interface_template
+$create_interface_template_trunk_subport
 EOM
         sed -i "/^runcmd.*/i \ \ \ \ \ \ PREFIX=24" $template_file
         sed -i "/^runcmd.*/i \ \ \ \ \ \ IPADDR=$IP" $template_file
@@ -302,6 +317,13 @@ then
     type_suffixes="normal-ext vf-ext"
 fi
 
+if [ "$resources_type" == "sriov_ext_no_pf_with_trunk" ]
+then
+    launch_trunk_instances {{ public_network_name }}
+    launch_sriov_vf_ext_instances
+    type_suffixes="trunk-ext vf-ext"
+fi
+
 if [ "$resources_type" == "sriov_ext" ]
 then
     launch_normal_ext_instances
@@ -309,6 +331,15 @@ then
     launch_sriov_pf_ext_instances
     type_suffixes="normal-ext vf-ext pf-ext"
 fi
+
+if [ "$resources_type" == "sriov_ext_with_trunk" ]
+then
+    launch_trunk_instances {{ public_network_name }}
+    launch_sriov_vf_ext_instances
+    launch_sriov_pf_ext_instances
+    type_suffixes="trunk-ext vf-ext pf-ext"
+fi
+
 
 for i in $(seq 1 $num_hypervisors)
 do
@@ -366,7 +397,10 @@ do
 	    fi
 
         echo $server_ip >> {{ ovn_migration_temp_dir }}/server_fips
-	FIPS[$i]=$server_ip
+	if [[ "$type_suffix" =~ "trunk" ]]; then
+	    TRUNK_VMS_FIPS[$i]=$server_ip
+            echo $server_ip >> {{ ovn_migration_temp_dir }}/trunk_vms_fips
+        fi
 
         # Wait till the VM allows ssh connections
 
@@ -492,13 +526,13 @@ if [[ "$resources_type" =~ "trunk" ]]; then
         for s in $(seq 1 $num_hypervisors); do
 	    if [ $s -ne $i ]; then
                 # First we check that short ping works
-                timeout 20 ssh $server_user_name@${FIPS[$i]}  "ping ${SUBPORT_IPS[$s]} -c 3"
+                timeout 20 ssh $server_user_name@${TRUNK_VMS_FIPS[$i]}  "ping ${SUBPORT_IPS[$s]} -c 3"
                 if [ $? -ne 0 ]; then
                     echo "Trunk subport is not pingable. Something went wrong."
                     exit 1
                 fi
                 # If short ping worked we start an infinite ping
-                ssh $server_user_name@${FIPS[$i]}  "ping ${SUBPORT_IPS[$s]} > ping_${SUBPORT_IPS[$s]}_output 2>&1 &"
+                ssh $server_user_name@${TRUNK_VMS_FIPS[$i]}  "ping ${SUBPORT_IPS[$s]} > ping_${SUBPORT_IPS[$s]}_output 2>&1 &"
             fi
         done
     done

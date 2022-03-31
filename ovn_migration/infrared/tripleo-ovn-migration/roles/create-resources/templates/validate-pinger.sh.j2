@@ -39,7 +39,7 @@ done
 if [[ "$resources_type" =~ "trunk" ]]; then
 
     if [ "{{ shutdown_workload }}" == "True" ]; then
-        for fip in `cat /home/stack/ovn_migration/server_fips`; do
+        for fip in `cat /home/stack/ovn_migration/trunk_vms_fips`; do
             ips=$(timeout 10 ssh $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
             for ip in $ips; do
                 timeout 10 ssh $server_user_name@$fip  "ping $ip > ping_${ip}_output 2>&1 &"
@@ -48,7 +48,7 @@ if [[ "$resources_type" =~ "trunk" ]]; then
 	sleep 60
     fi
 
-    for fip in `cat {{ ovn_migration_temp_dir }}/server_fips`; do
+    for fip in `cat {{ ovn_migration_temp_dir }}/trunk_vms_fips`; do
 	timeout 10 ssh $server_user_name@$fip pkill --signal SIGINT ping
 	sleep 2
 	mkdir -p {{ ovn_migration_temp_dir }}/ping_output/$fip
