@@ -23,6 +23,8 @@
       subnet: storage_mgmt_subnet
     Tenant:
       subnet: tenant_subnet
+    OcProvisioning:
+      subnet: oc_provisioning_subnet
   default_route_networks: ['External']
   HostnameFormatDefault: '%stackname%-controller0-%index%'
   # Deprecated & backward-compatible values (FIXME: Make parameters consistent)
@@ -196,6 +198,8 @@
       subnet: tenant_subnet
     Storage:
       subnet: storage_subnet
+    OcProvisioning:
+      subnet: oc_provisioning_subnet
   HostnameFormatDefault: '%stackname%-compute0-%index%'
   RoleParametersDefault:
     TunedProfileName: "virtual-host"
@@ -267,6 +271,8 @@
       subnet: tenant_leaf1
     Storage:
       subnet: storage_leaf1
+    OcProvisioning:
+      subnet: oc_provisioning_leaf1
   HostnameFormatDefault: '%stackname%-compute1-%index%'
   RoleParametersDefault:
     TunedProfileName: "virtual-host"
@@ -338,6 +344,8 @@
       subnet: tenant_leaf2
     Storage:
       subnet: storage_leaf2
+    OcProvisioning:
+      subnet: oc_provisioning_leaf2
   HostnameFormatDefault: '%stackname%-compute2-%index%'
   RoleParametersDefault:
     TunedProfileName: "virtual-host"
