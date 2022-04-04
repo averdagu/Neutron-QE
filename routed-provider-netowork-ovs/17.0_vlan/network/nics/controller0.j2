@@ -1,0 +1,66 @@
+{# The values of the following custom heat parameters was hard-coded into this template:
+ * EC2MetadataIp
+To parameterize use the {{role.name}}ExtraGroupVars THT interface and update the template to use an ansible var.
+#}
+---
+{% set mtu_list = [ctlplane_mtu] %}
+{% for network in role_networks %}
+{{ mtu_list.append(lookup('vars', networks_lower[network] ~ '_mtu')) }}
+{%- endfor %}
+{% set min_viable_mtu = mtu_list | max %}
+network_config:
+- type: interface
+  name: nic1
+  use_dhcp: false
+  dns_servers: {{ ctlplane_dns_nameservers }}
+  addresses:
+  - ip_netmask: {{ ctlplane_ip }}/{{ ctlplane_subnet_cidr }}
+  routes: {{ [ctlplane_host_routes, [{'ip_netmask': '169.254.169.254/32', 'next_hop': '192.168.24.1'}]]
+    | flatten | unique }}
+- type: ovs_bridge
+  name: br-isolated
+  use_dhcp: false
+  mtu: {{ min_viable_mtu }}
+  members:
+  - type: interface
+    name: nic2
+    mtu: {{ min_viable_mtu }}
+    primary: true
+  - type: vlan
+    mtu: {{ external_mtu }}
+    vlan_id: {{ storage_vlan_id }}
+    addresses:
+    - ip_netmask: {{ storage_ip }}/{{ storage_cidr }}
+    routes: {{ [storage_host_routes] | flatten | unique }}
+  - type: vlan
+    mtu: {{ external_mtu }}
+    vlan_id: {{ storage_mgmt_vlan_id }}
+    addresses:
+    - ip_netmask: {{ storage_mgmt_ip }}/{{ storage_mgmt_cidr }}
+    routes: {{ [storage_mgmt_host_routes] | flatten | unique }}
+  - type: vlan
+    mtu: {{ external_mtu }}
+    vlan_id: {{ internal_api_vlan_id }}
+    addresses:
+    - ip_netmask: {{ internal_api_ip }}/{{ internal_api_cidr }}
+    routes: {{ [internal_api_host_routes] | flatten | unique }}
+  - type: vlan
+    mtu: {{ external_mtu }}
+    vlan_id: {{ tenant_vlan_id }}
+    addresses:
+    - ip_netmask: {{ tenant_ip }}/{{ tenant_cidr }}
+    routes: {{ [tenant_host_routes] | flatten | unique }}
+- type: ovs_bridge
+  name: br-ex
+  use_dhcp: false
+  members:
+  - type: interface
+    name: nic3
+    primary: true
+  - type: vlan
+    vlan_id: {{ external_vlan_id }}
+    addresses:
+    - ip_netmask: {{ external_ip }}/{{ external_cidr }}
+    routes:
+    - ip_netmask: 0.0.0.0/0
+      next_hop: {{ external_gateway_ip }}
