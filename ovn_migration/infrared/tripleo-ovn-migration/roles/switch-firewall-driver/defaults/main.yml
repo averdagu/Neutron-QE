@@ -1,5 +1,5 @@
 ---
 
-ovn_migration_temp_dir: "{{ ovn_migration_temp_dir }}"
+temp_dir: "{{ temp_dir }}"
 node_ssh_user: "{{ node_ssh_user }}"
 overcloudrc: "{{ overcloudrc }}"

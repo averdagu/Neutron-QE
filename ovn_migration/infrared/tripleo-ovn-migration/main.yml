@@ -276,7 +276,7 @@
             name: switch-firewall-driver
         vars:
             node_ssh_user: "{{ overcloud_ssh_user }}"
-            ovn_migration_temp_dir: /home/stack/ovn_migration
+            temp_dir: /home/stack/fw_driver_switch
         when: install.fix_firewall_driver|bool
 
 - name: Kick start the migration

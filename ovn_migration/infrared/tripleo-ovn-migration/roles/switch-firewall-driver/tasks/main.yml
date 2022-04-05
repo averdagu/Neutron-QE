@@ -1,17 +1,17 @@
 - name : Create temp file directory if not present
   file:
     state: directory
-    path: "{{ ovn_migration_temp_dir }}"
+    path: "{{ temp_dir }}"
 
 - name: Generate firewall driver switch script
   template:
     src: switch-firewall-driver.sh.j2
-    dest: "{{ ovn_migration_temp_dir }}/switch-firewall-driver.sh"
+    dest: "{{ temp_dir }}/switch-firewall-driver.sh"
     mode: 0744
 
 - name: Run firewall driver switch script
   shell: >
     set -o pipefail &&
-    {{ ovn_migration_temp_dir }}/switch-firewall-driver.sh >
-    {{ ovn_migration_temp_dir }}/switch-firewall-driver.sh.log 2>&1
+    {{ temp_dir }}/switch-firewall-driver.sh >
+    {{ temp_dir }}/switch-firewall-driver.sh.log 2>&1
   changed_when: true
