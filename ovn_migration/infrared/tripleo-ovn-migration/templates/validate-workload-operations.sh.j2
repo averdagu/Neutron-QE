@@ -5,6 +5,16 @@ server_user_name={{ server_user_name }}
 
 servers=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | awk '{print $1}')
 
+validate_trunk_subports_connectivity(){
+    ! [ -s /home/stack/ovn_migration/trunk_vms_fips ] && return
+    for fip in `cat /home/stack/ovn_migration/trunk_vms_fips`; do
+        ips=$(timeout 10 ssh $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
+        for ip in $ips; do
+            timeout 10 ssh $server_user_name@$fip ping -c 3 $ip
+        done
+    done
+}
+
 validate_vms_connectivity(){
   for server_ip in `cat /home/stack/ovn_migration/server_fips`; do
     echo Pinging $server_ip
@@ -35,6 +45,7 @@ if [ "{{ validate_vm_live_migration }}" == "True" ]; then
     echo Server migrated successfully from $host to $host_new
   done
   validate_vms_connectivity
+  validate_trunk_subports_connectivity
 fi
 
 if [ "{{ validate_vm_reboot }}" == "True" ]; then
@@ -77,4 +88,5 @@ if [ "{{ validate_vm_reboot }}" == "True" ]; then
     [ "$final_status" != "ACTIVE" ] && echo Final VM status is not ACTIVE. Something went wrong && exit 1
   done
   validate_vms_connectivity
+  validate_trunk_subports_connectivity
 fi
