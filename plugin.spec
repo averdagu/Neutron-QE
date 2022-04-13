@@ -238,3 +238,18 @@ subparsers:
                       type: Bool
                       help: Temporary workaround. Whether to inject to ovn migration playbooks an option to print workload VM console in case of failure
                       default: True
+
+                  fix_ansible_inventory:
+                      type: bool
+                      help: Temporary workaround. Whether to apply a fix from https://review.opendev.org/c/openstack/neutron/+/834925/
+                      default: False
+
+                  fix_systemctl_daemon:
+                      type: Bool
+                      help: Temporary workaround. Whether to apply a fix from https://review.opendev.org/c/openstack/neutron/+/831511/
+                      default: False
+
+                  fix_tmp_dir_exec:
+                      type: Bool
+                      help: Temporary workaround. Whether to apply fix from https://code.engineering.redhat.com/gerrit/c/networking-ovn/+/401893/
+                      default: False
