@@ -98,24 +98,29 @@
 
             - name: Apply fix for ansible inventory
               shell: |
-                  curl -L http://file.tlv.redhat.com/~rsafrono/files/ovn_migration.sh
+                  curl -Lo /home/stack/ovn_migration.sh http://file.tlv.redhat.com/~rsafrono/files/ovn_migration.sh
                   mv /usr/bin/ovn_migration.sh /usr/bin/ovn_migration.sh.bak
-                  mv ovn_migration.sh /usr/bin/ovn_migration.sh
+                  mv /home/stack/ovn_migration.sh /usr/bin/
                   chmod +x /usr/bin/ovn_migration.sh
               when: install.fix_ansible_inventory|bool
 
             - name: Apply fix for systemctl daemon after removal
               shell: |
-                  sed -i "/remove\ containers/i -\ name:\ Reload\ systemctl\ daemons\n\ \ systemd:\n\ \ \ \ daemon_reload:\ yes\n/" {{ playbooks_path }}/roles/stop-agents/tasks/main.yml
+                  sed -i "/remove\ containers/i -\ name:\ Reload\ systemctl\ daemons\n\ \ systemd:\n\ \ \ \ daemon_reload:\ yes\n" {{ playbooks_path }}/roles/stop-agents/tasks/main.yml
               when: install.fix_systemctl_daemon
 
             - name: Apply fix for tmp dir executable
               shell: |
                   sed -i 's/0744/0644/' {{ playbooks_path }}/roles/migration/tasks/activate-ovn.yml
-                  sed -i 's/\(.*log\)/sh\ \1/' {{ playbooks_path }}/roles/migration/tasks/activate-ovn.yml
+                  sed -i 's/\(.*log\)/\ \ \ \ sh\ \1/' {{ playbooks_path }}/roles/migration/tasks/activate-ovn.yml
                   sed -i 's/0744/0644/' {{ playbooks_path }}/roles/migration/tasks/clone-dataplane.yml
                   sed -i 's/\(shell:\)\(.*\)/\1\ sh\ \2/' {{ playbooks_path }}/roles/migration/tasks/clone-dataplane.yml
               when: install.fix_tmp_dir_exec|bool
+
+            - name: Disable pre-checks
+              shell: |
+                  sed -i '/Pre\ migration\ checks/,+6 d' {{ playbooks_path }}/ovn-migration.yml
+              when: install.disable_pre_checks
         when: migrate|bool
 
 - name: Prepare for migration

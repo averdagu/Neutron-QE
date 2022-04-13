@@ -253,3 +253,8 @@ subparsers:
                       type: Bool
                       help: Temporary workaround. Whether to apply fix from https://code.engineering.redhat.com/gerrit/c/networking-ovn/+/401893/
                       default: False
+
+                  disable_pre_checks:
+                      type: Bool
+                      help: Temporary workaround. Whether to disable pre-migration checks.
+                      default: False
