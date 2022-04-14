@@ -121,6 +121,12 @@
               shell: |
                   sed -i '/Pre\ migration\ checks/,+6 d' {{ playbooks_path }}/ovn-migration.yml
               when: install.disable_pre_checks
+
+            - name: Apply patch for sg- fg- interfaces cleanup
+              shell: |
+                  sed -i 's/rfp-/rfp-|sg-|fg-/' {{ playbooks_path }}/roles/migration/tasks/cleanup-dataplane.yml
+                  sed -i 's/rfp-/rfp-|sg-|fg-/' {{ playbooks_path }}/roles/migration/templates/clone-br-int.sh.j2
+              when: install.apply_patch_for_sg_fg_cleanup|bool
         when: migrate|bool
 
 - name: Prepare for migration

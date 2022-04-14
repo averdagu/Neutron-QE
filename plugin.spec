@@ -258,3 +258,8 @@ subparsers:
                       type: Bool
                       help: Temporary workaround. Whether to disable pre-migration checks.
                       default: False
+
+                  apply_patch_for_sg_fg_cleanup:
+                      type: Bool
+                      help: Temporary workaround. Whether to apply fix from https://review.opendev.org/c/openstack/neutron/+/832675
+                      default: False
