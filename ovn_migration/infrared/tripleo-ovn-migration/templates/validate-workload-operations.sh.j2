@@ -44,12 +44,12 @@ validate_vm_migration(){
     echo new host = $host_new
     [ "$host" == "$host_new" ] && echo Server $server failed to migrate, something went wrong && exit 1
     status=$(openstack server show $server -c status  -f value)
-    if [ "$1" == "live" ]; then
-        [ "$status" != "ACTIVE" ] && echo Server $status is not ACTIVE, something went wrong && exit 1
-    else
+    if [ "$1" != "live" ]; then
       [ "$status" != "VERIFY_RESIZE" ] && echo Server $status is not VERIFY_RESIZE, something went wrong && exit 1
       openstack server resize confirm $server
+      status=$(openstack server show $server -c status  -f value)
     fi
+    [ "$status" != "ACTIVE" ] && echo Server $status is not ACTIVE, something went wrong && exit 1
     echo Server migrated successfully from $host to $host_new
   done
   validate_vms_connectivity
