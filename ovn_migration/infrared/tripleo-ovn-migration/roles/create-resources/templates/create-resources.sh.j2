@@ -94,7 +94,7 @@ openstack router set --external-gateway {{ public_network_name }} ovn-migration-
 
 openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-{{ resource_suffix }}
 
-num_hypervisors=`openstack hypervisor stats show | grep count | awk '{print $4}'`
+num_hypervisors=`openstack hypervisor list -f value | wc -l`
 
 launch_normal_int_instances(){
     for i in $(seq 1 $num_hypervisors)

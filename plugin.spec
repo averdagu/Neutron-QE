@@ -197,9 +197,19 @@ subparsers:
                       help: Whether to check if nodes have OVS-specific leftovers (namespaces and interfaces) after migration to OVN.
                       default: False
 
+                  validate_vm_cold_migration:
+                      type: Bool
+                      help: Whether to cold migrate workload VMs after migration to OVN and check connectivity.
+                      default: False
+
                   validate_vm_live_migration:
                       type: Bool
                       help: Whether to live migrate workload VMs after migration to OVN and check connectivity.
+                      default: False
+
+                  validate_vm_migration:
+                      type: Bool
+                      help: Whether to migrate workload VMs (both, i.e. cold and live scenario) after migration to OVN and check connectivity.
                       default: False
 
                   validate_vm_reboot:
