@@ -32,20 +32,42 @@ validate_vms_connectivity(){
   done
 }
 
-if [ "{{ validate_vm_live_migration }}" == "True" ]; then
+validate_vm_migration(){
+  [ "$1" == "live" ] && extra_param="--live-migration --block-migration"
   for server in $servers; do
     echo server id = $server
     host=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
     echo host = $host
-    echo execute live migration command
-    timeout 120 openstack server migrate $server --live-migration --block-migration --wait
+    echo execute vm migration command
+    timeout 120 openstack server migrate $server $extra_param --wait
     host_new=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
     echo new host = $host_new
     [ "$host" == "$host_new" ] && echo Server $server failed to migrate, something went wrong && exit 1
+    status=$(openstack server show $server -c status  -f value)
+    if [ "$1" == "live" ]; then
+        [ "$status" != "ACTIVE" ] && echo Server $status is not ACTIVE, something went wrong && exit 1
+    else
+      [ "$status" != "VERIFY_RESIZE" ] && echo Server $status is not VERIFY_RESIZE, something went wrong && exit 1
+      openstack server resize confirm $server
+    fi
     echo Server migrated successfully from $host to $host_new
   done
   validate_vms_connectivity
   validate_trunk_subports_connectivity
+}
+
+if [ "{{ validate_vm_migration }}" == "True" ]; then
+  validate_vm_migration
+  validate_vm_migration live
+
+else
+  if [ "{{ validate_vm_live_migration }}" == "True" ]; then
+    validate_vm_migration live
+  fi
+
+  if [ "{{ validate_vm_cold_migration }}" == "True" ]; then
+    validate_vm_migration
+  fi
 fi
 
 if [ "{{ validate_vm_reboot }}" == "True" ]; then

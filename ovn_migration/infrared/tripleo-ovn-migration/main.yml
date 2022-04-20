@@ -11,7 +11,9 @@
             reduce_mtu: "{{ install.reduce_mtu }}"
             validate_agents: "{{ install.validate_agents }}"
             validate_nodes: "{{ install.validate_nodes }}"
+            validate_vm_cold_migration: "{{ install.validate_vm_cold_migration }}"
             validate_vm_live_migration: "{{ install.validate_vm_live_migration }}"
+            validate_vm_migration: "{{ install.validate_vm_migration }}"
             validate_vm_reboot: "{{ install.validate_vm_reboot }}"
         when: install is defined
 
@@ -21,7 +23,9 @@
             reduce_mtu: "{{ reduce_mtu }}"
             validate_agents: "{{ validate_agents }}"
             validate_nodes: "{{ validate_nodes }}"
+            validate_vm_cold_migration: "{{ validate_vm_cold_migration }}"
             validate_vm_live_migration: "{{ validate_vm_live_migration }}"
+            validate_vm_migration: "{{ validate_vm_migration }}"
             validate_vm_reboot: "{{ validate_vm_reboot }}"
         when: install is not defined
 
@@ -458,7 +462,7 @@
                   src: templates/validate-workload-operations.sh.j2
                   dest: "{{ ovn_migration_working_dir }}/validate-workload-operations.sh"
                   mode: 0755
-              when: validate_vm_live_migration|bool or validate_vm_reboot|bool
+              when: validate_vm_cold_migration|bool or validate_vm_live_migration|bool or validate_vm_migration|bool or validate_vm_reboot|bool
 
             - name: Run workload operations validation script
               shell:
