@@ -197,8 +197,6 @@
     Compute SR-IOV Role
   CountDefault: 1
   networks:
-    External:
-      subnet: external_subnet
     InternalApi:
       subnet: internal_api_subnet
     Tenant:
