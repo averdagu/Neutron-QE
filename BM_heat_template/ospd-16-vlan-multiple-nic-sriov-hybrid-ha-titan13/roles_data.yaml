@@ -229,8 +229,6 @@
     - OS::TripleO::Services::MetricsQdr
     - OS::TripleO::Services::Multipathd
     - OS::TripleO::Services::MySQLClient
-    - OS::TripleO::Services::NeutronDhcpAgent
-    - OS::TripleO::Services::NeutronMetadataAgent
     - OS::TripleO::Services::NeutronBgpVpnBagpipe
     - OS::TripleO::Services::NeutronSriovAgent
     - OS::TripleO::Services::NeutronSriovHostConfig
