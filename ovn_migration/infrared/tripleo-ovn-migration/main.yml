@@ -11,6 +11,7 @@
             reduce_mtu: "{{ install.reduce_mtu }}"
             validate_agents: "{{ install.validate_agents }}"
             validate_nodes: "{{ install.validate_nodes }}"
+            validate_pcs_status: "{{ install.validate_pcs_status }}"
             validate_vm_cold_migration: "{{ install.validate_vm_cold_migration }}"
             validate_vm_live_migration: "{{ install.validate_vm_live_migration }}"
             validate_vm_migration: "{{ install.validate_vm_migration }}"
@@ -23,6 +24,7 @@
             reduce_mtu: "{{ reduce_mtu }}"
             validate_agents: "{{ validate_agents }}"
             validate_nodes: "{{ validate_nodes }}"
+            validate_pcs_status: "{{ validate_pcs_status }}"
             validate_vm_cold_migration: "{{ validate_vm_cold_migration }}"
             validate_vm_live_migration: "{{ validate_vm_live_migration }}"
             validate_vm_migration: "{{ validate_vm_migration }}"
@@ -456,6 +458,20 @@
                   {{ ovn_migration_working_dir }}/nodes-validation.sh
                   > {{ ovn_migration_working_dir }}/nodes-validation.sh.log 2>&1
               when:  validate_nodes|bool
+
+            - name: Create pcs status validation script
+              template:
+                  src: templates/validate-pcs-status.sh.j2
+                  dest: "{{ ovn_migration_working_dir }}/validate-pcs-status.sh"
+                  mode: 0755
+              when: validate_pcs_status|bool
+
+            - name: Run pcs status validation script
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/validate-pcs-status.sh
+                  > {{ ovn_migration_working_dir }}/validate-pcs-status.sh.log 2>&1
+              when:  validate_pcs_status|bool
 
             - name: Create workload operations validation script
               template:

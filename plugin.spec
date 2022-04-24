@@ -197,6 +197,11 @@ subparsers:
                       help: Whether to check if nodes have OVS-specific leftovers (namespaces and interfaces) after migration to OVN.
                       default: False
 
+                  validate_pcs_status:
+                      type: Bool
+                      help: Whether to check pcs status on controller nodes.
+                      default: False
+
                   validate_vm_cold_migration:
                       type: Bool
                       help: Whether to cold migrate workload VMs after migration to OVN and check connectivity.

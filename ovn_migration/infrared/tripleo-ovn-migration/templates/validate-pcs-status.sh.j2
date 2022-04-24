@@ -1,0 +1,58 @@
+#!/bin/bash
+set -x
+
+SSH_USER={{ overcloud_ssh_user }}
+
+. ~/stackrc
+
+# (rsafrono) this will not work on OSP17, need to find a way via metalsmith usage or something else
+openstack server list -c Name -c Networks -f value --flavor controller | sed 's/ctlplane=//' > /tmp/nodes_data
+
+. {{ overcloudrc }}
+
+check_that_all_services_status(){
+  for service in ${@:2}; do
+    echo Service $service
+    service_status=$(echo "$pcs_status" | grep $service | grep ocf |  awk '{print $(NF-1)}')
+    for stat in $service_status; do
+      echo Stat = $stat
+      [ "$stat" != "$1" ] && echo "Found a service that should be $1 but it does not" && exit 1
+    done
+    echo
+  done
+}
+
+check_master_slave_service(){
+  for service in $@; do
+    echo Service $service
+    service_status=$(echo "$pcs_status" | grep $service | grep ocf |  awk '{print $(NF-1)}')
+    [ "$service_status" == "" ] && continue
+    master=0
+    for stat in $service_status; do
+      echo Stat = $stat
+      if [ "$stat" != "Slave" ] && [ "$stat" != "Master" ]; then
+	      echo Service status is not 'Master' or 'Slave'. something went wrong
+      fi
+      [ "$stat" == "Master" ] && master=$(( master+1 ))
+    done
+    [ $master -ne 1 ] && echo "It is expected that the service will have 1 master. Found '$master'" && exit 1
+    echo
+  done
+}
+
+check_for_failed_resources(){
+  status=$(echo "$pcs_status" | sed -ne '/Failed Resource/,$ p' | grep '*')
+  echo Status = $status
+  if [ "$status" != "" ]; then
+    echo Found failed resources && exit 1
+  fi
+}
+
+while read -r node ip; do
+  echo Node = $node
+  pcs_status=$(timeout 10 ssh -n $SSH_USER@$ip sudo pcs status)
+  check_that_all_services_status Started haproxy rabbitmq openstack-cinder-volume
+  check_that_all_services_status Master galera
+  check_master_slave_service redis ovn-dbs
+  check_for_failed_resources
+done < /tmp/nodes_data
