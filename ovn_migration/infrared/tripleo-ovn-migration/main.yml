@@ -136,7 +136,7 @@
 
             - name: Fix dhcp agents cleanup
               shell: |
-                  awk '{print} /become/ && !n {print "  when:\n    - ansible_facts.services[item] is defined\n    - ansible_facts.services[item]['state'] == running"; n++}' {{ playbooks_path }}/roles/stop-agents/tasks/cleanup.yml
+                  awk '{print} /become/ && !n {print "  when:\n    - ansible_facts.services[item] is defined\n    - ansible_facts.services[item]['state'] == running"; n++}' {{ playbooks_path }}/roles/stop-agents/tasks/cleanup.yml > {{ playbooks_path }}/roles/stop-agents/tasks/cleanup.yml
               when: install.fix_dhcp_agents_cleanup|bool
         when: migrate|bool
 
