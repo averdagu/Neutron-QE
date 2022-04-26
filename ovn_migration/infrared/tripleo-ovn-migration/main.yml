@@ -133,6 +133,11 @@
                   sed -i 's/rfp-/rfp-|sg-|fg-/' {{ playbooks_path }}/roles/migration/tasks/cleanup-dataplane.yml
                   sed -i 's/rfp-/rfp-|sg-|fg-/' {{ playbooks_path }}/roles/migration/templates/clone-br-int.sh.j2
               when: install.apply_patch_for_sg_fg_cleanup|bool
+
+            - name: Fix dhcp agents cleanup
+              shell: |
+                  awk '{print} /become/ && !n {print "  when:\n    - ansible_facts.services[item] is defined\n    - ansible_facts.services[item]['state'] == running"; n++}' {{ playbooks_path }}/roles/stop-agents/tasks/cleanup.yml
+              when: install.fix_dhcp_agents_cleanup|bool
         when: migrate|bool
 
 - name: Prepare for migration

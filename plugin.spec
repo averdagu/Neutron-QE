@@ -278,3 +278,8 @@ subparsers:
                       type: Bool
                       help: Temporary workaround. Whether to apply fix from https://review.opendev.org/c/openstack/neutron/+/832675
                       default: False
+
+                  fix_dhcp_agents_cleanup:
+                      type: Bool
+                      help: Temporary workaround. Whether to apply fix from https://review.opendev.org/c/openstack/neutron/+/839392
+                      default: False
