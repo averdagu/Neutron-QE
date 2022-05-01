@@ -6,10 +6,11 @@ openstack network agent list -c Alive -c Binary -f value | tee /tmp/agents
 
 case "$1" in
     ovs)
+	echo TEST: test_ovs_agents_status_before_migration
         while read -r status agent; do
             if [ "$status" != "True" ]; then
-	         echo "Bad status of '${agent}': '$status'"
-		 exit 1
+		 echo "FAIL: Bad status of '${agent}': '$status'"
+		 exit
 	    fi
         done < /tmp/agents
         ;;
@@ -19,17 +20,18 @@ case "$1" in
         while read -r status agent; do
             if [[ "$valid_ovn_agents" =~ $agent ]]; then
                 if [ "$status" != "True" ]; then
-		    echo "Bad status of '${agent}': '$status'"
-		    exit 1
+		    echo "FAIL: Bad status of '${agent}': '$status'"
+		    exit
 		fi
             else
-                echo "Network agent '$agent' is invalid for OVN"
-                exit 1
+                echo "FAIL: Network agent '$agent' is invalid for OVN"
+                exit
             fi
         done < /tmp/agents
         ;;
 
     *)
-        echo "Mechanism driver '$1' is invalid"
-        exit 1
+        echo "FAIL: Mechanism driver '$1' is invalid"
+        exit
 esac
+echo PASS

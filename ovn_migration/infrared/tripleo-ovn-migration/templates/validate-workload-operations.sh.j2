@@ -2,38 +2,50 @@
 set -x
 . {{ overcloudrc }}
 server_user_name={{ server_user_name }}
+ovn_migration_dir={{ ovn_migration_working_dir }}
 
 servers=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | awk '{print $1}')
 
 validate_trunk_subports_connectivity(){
-    ! [ -s /home/stack/ovn_migration/trunk_vms_fips ] && return
-    for fip in `cat /home/stack/ovn_migration/trunk_vms_fips`; do
+    ! [ -s $ovn_migration_dir/trunk_vms_fips ] && return
+    for fip in `cat $ovn_migration_dir/trunk_vms_fips`; do
         ips=$(timeout 10 ssh $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
         for ip in $ips; do
             timeout 10 ssh $server_user_name@$fip ping -c 3 $ip
+            if [ $? -ne 0 ]; then
+                echo "FAIL: Subport connectivity test failed."
+                exit
+            fi
         done
     done
 }
 
 validate_vms_connectivity(){
-  for server_ip in `cat /home/stack/ovn_migration/server_fips`; do
+  ! [ -s $ovn_migration_dir/server_fips ] && echo FAIL: File with server fips does not exist && exit
+  for server_ip in `cat $ovn_migration_dir/server_fips`; do
     echo Pinging $server_ip
     ping -c 3 $server_ip
-    [ $? -ne 0 ] && echo Server ip $server_ip is not responding. something went wrong && exit 1
+    [ $? -ne 0 ] && echo FAIL: Server ip $server_ip is not responding. something went wrong && exit
     echo Ping test succeeded
     echo Testing ssh to $server_ip
     timeout 20 ssh -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
     if [ $? -ne 0 ]; then
-        echo "VM address $server_ip is not accessible via ssh. Something went wrong."
-        exit 1
+        echo "FAIL: VM address $server_ip is not accessible via ssh. Something went wrong."
+        exit
     fi
     echo SSH test succeeded
   done
 }
 
 validate_vm_migration(){
-  [ "$1" == "live" ] && extra_param="--live-migration --block-migration"
+  if [ "$1" == "live" ]; then
+    test_name='test_live_migrate_vm'
+    extra_param="--live-migration --block-migration"
+  else
+    test_name='test_cold_migrate_vm'
+  fi
+  echo TEST: $test_name
   for server in $servers; do
     echo server id = $server
     host=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
@@ -42,18 +54,19 @@ validate_vm_migration(){
     timeout 120 openstack server migrate $server $extra_param --wait
     host_new=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
     echo new host = $host_new
-    [ "$host" == "$host_new" ] && echo Server $server failed to migrate, something went wrong && exit 1
+    [ "$host" == "$host_new" ] && echo FAIL: Server $server failed to migrate, something went wrong && exit
     status=$(openstack server show $server -c status  -f value)
     if [ "$1" != "live" ]; then
-      [ "$status" != "VERIFY_RESIZE" ] && echo Server $status is not VERIFY_RESIZE, something went wrong && exit 1
+      [ "$status" != "VERIFY_RESIZE" ] && echo FAIL: Server $status is not VERIFY_RESIZE, something went wrong && exit
       openstack server resize confirm $server
       status=$(openstack server show $server -c status  -f value)
     fi
-    [ "$status" != "ACTIVE" ] && echo Server $status is not ACTIVE, something went wrong && exit 1
+    [ "$status" != "ACTIVE" ] && echo FAIL: Server $status is not ACTIVE, something went wrong && exit
     echo Server migrated successfully from $host to $host_new
   done
   validate_vms_connectivity
   validate_trunk_subports_connectivity
+  echo PASS
 }
 
 if [ "{{ validate_vm_migration }}" == "True" ]; then
@@ -71,16 +84,17 @@ else
 fi
 
 if [ "{{ validate_vm_reboot }}" == "True" ]; then
+  echo TEST: test_reboot_vm
   for server in $servers; do
     echo server id = $server
     start_status=$(openstack server show -c status -f value $server)
     echo starting status = $start_status
-    [ "$start_status" != "ACTIVE" ] && echo Starting VM status is not ACTIVE. Something went wrong && exit 1
+    [ "$start_status" != "ACTIVE" ] && echo FAIL: Starting VM status is not ACTIVE. Something went wrong && exit
     echo execute server stop command
     openstack server stop $server
     interim_status=$(openstack server show -c status -f value $server)
     echo interim status = $interim_status
-    [ "$interim_status" != "SHUTOFF" ] && echo Interim VM status is not SHUTOFF. Something went wrong && exit 1
+    [ "$interim_status" != "SHUTOFF" ] && echo FAIL: Interim VM status is not SHUTOFF. Something went wrong && exit
     echo execute server start command
     openstack server start $server
 
@@ -107,8 +121,9 @@ if [ "{{ validate_vm_reboot }}" == "True" ]; then
 
     final_status=$(openstack server show -c status -f value $server)
     echo final status = $final_status
-    [ "$final_status" != "ACTIVE" ] && echo Final VM status is not ACTIVE. Something went wrong && exit 1
+    [ "$final_status" != "ACTIVE" ] && echo "FAIL: Final VM status is not ACTIVE. Something went wrong" && exit
   done
   validate_vms_connectivity
   validate_trunk_subports_connectivity
+  echo PASS
 fi

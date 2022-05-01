@@ -16,7 +16,7 @@ check_that_all_services_status(){
     service_status=$(echo "$pcs_status" | grep $service | grep ocf |  awk '{print $(NF-1)}')
     for stat in $service_status; do
       echo Stat = $stat
-      [ "$stat" != "$1" ] && echo "Found a service that should be $1 but it does not" && exit 1
+      [ "$stat" != "$1" ] && echo "FAIL: Found a service that should be $1 but it does not" && exit
     done
     echo
   done
@@ -31,11 +31,12 @@ check_master_slave_service(){
     for stat in $service_status; do
       echo Stat = $stat
       if [ "$stat" != "Slave" ] && [ "$stat" != "Master" ]; then
-	      echo Service status is not 'Master' or 'Slave'. something went wrong
+	      echo "FAIL: Service status is not 'Master' or 'Slave'. something went wrong"
+	      exit
       fi
       [ "$stat" == "Master" ] && master=$(( master+1 ))
     done
-    [ $master -ne 1 ] && echo "It is expected that the service will have 1 master. Found '$master'" && exit 1
+    [ $master -ne 1 ] && echo "FAIL: It is expected that the service will have 1 master. Found '$master'" && exit
     echo
   done
 }
@@ -44,10 +45,11 @@ check_for_failed_resources(){
   status=$(echo "$pcs_status" | sed -ne '/Failed Resource/,$ p' | grep '*')
   echo Status = $status
   if [ "$status" != "" ]; then
-    echo Found failed resources && exit 1
+    echo FAIL: Found failed resources && exit
   fi
 }
 
+echo TEST: test_pacemaker_services_status
 while read -r node ip; do
   echo Node = $node
   pcs_status=$(timeout 10 ssh -n $SSH_USER@$ip sudo pcs status)
@@ -56,3 +58,4 @@ while read -r node ip; do
   check_master_slave_service redis ovn-dbs
   check_for_failed_resources
 done < /tmp/nodes_data
+echo PASS

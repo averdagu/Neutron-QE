@@ -8,11 +8,11 @@ packet_loss_threshold={{ packet_loss_threshold }}
 check_if_pinger_stopped(){
     [ "$2" == "quick" ] && wait_time=1 || wait_time=10
     size=$(stat --format=%s $file)
-    [ $size -eq 0 ] && echo "Log file is empty, something went wrong" && exit 1
+    [ $size -eq 0 ] && echo "FAIL: Log file is empty, something went wrong" && exit
     until grep 'packet loss' $file; do
         sleep 1
         wait_time=$((wait_time-1))
-        [ $wait_time -eq 0 ] && echo "Can't find ping result summary in the pinger log"  && exit 1
+        [ $wait_time -eq 0 ] && echo "FAIL: Can't find ping result summary in the pinger log"  && exit
     done
 }
 
@@ -22,24 +22,27 @@ validate(){
     ping_result=$(( packets_total - packets_received ))
 
     if [ $ping_result -gt $packet_loss_threshold ]; then
-        echo "$1: Ping loss higher than $packet_loss_threshold packets detected ($ping_result packets)"
-        exit 1
+        echo "FAIL: $1: Ping loss higher than $packet_loss_threshold packets detected ($ping_result packets)"
+        exit
     fi
     echo "$1: Passed validation"
 }
 
+echo TEST: test_ping_to_workload_fips
 file_list=`ls {{ ovn_migration_temp_dir }}/*ping.out`
-[ "$file_list" == "" ] && echo "No pinger log files found. Something went wrong." && exit 1
+[ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
 
 for file in $file_list; do
     check_if_pinger_stopped $file
     validate $file
 done
+echo PASS: test_ping_to_workload_fips
 
 if [[ "$resources_type" =~ "trunk" ]]; then
+    echo TEST: test_ping_between_trunk_subports
 
     if [ "{{ shutdown_workload }}" == "True" ]; then
-        for fip in `cat /home/stack/ovn_migration/trunk_vms_fips`; do
+        for fip in `cat {{ ovn_migration_temp_dir }}/trunk_vms_fips`; do
             ips=$(timeout 10 ssh $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
             for ip in $ips; do
                 timeout 10 ssh $server_user_name@$fip  "ping $ip > ping_${ip}_output 2>&1 &"
@@ -56,10 +59,11 @@ if [[ "$resources_type" =~ "trunk" ]]; then
     done
 
     file_list=`find {{ ovn_migration_temp_dir }}/ping_output -type f`
-    [ "$file_list" == "" ] && echo "No pinger log files found. Something went wrong." && exit 1
+    [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
 
     for file in $file_list; do
         check_if_pinger_stopped $file quick
         validate $file
     done
+    echo PASS: test_ping_between_trunk_subports
 fi

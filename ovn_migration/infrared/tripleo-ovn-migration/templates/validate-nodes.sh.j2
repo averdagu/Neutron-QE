@@ -35,11 +35,14 @@ check_for_ovs_namespaces(){
     done
 }
 
+echo TEST: test_no_ovs_objects
 return_value=0
 for node in `cat /tmp/nodes_data | awk '{print $1}'`; do
     check_for_ovs_namespaces $node
     check_for_ovs_nics $node
 done
 if [ $return_value -ne 0 ]; then
-    exit $return_value
+    echo FAIL: OVS-specific objects found
+    exit
 fi
+echo PASS: test_no_ovs_objects

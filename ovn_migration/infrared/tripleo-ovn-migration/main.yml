@@ -1,7 +1,5 @@
 # Playbook which preps migration and then invokes the migration script.
 
-# migration_result will be set to 'false' until it is updated at the end
-# to 'passed' in case all worked as expected. This will be used by CI.
 - name: Set necessary facts
   hosts: undercloud
   tasks:
@@ -16,6 +14,7 @@
             validate_vm_live_migration: "{{ install.validate_vm_live_migration }}"
             validate_vm_migration: "{{ install.validate_vm_migration }}"
             validate_vm_reboot: "{{ install.validate_vm_reboot }}"
+            fetch_junit_xml: "{{ install.fetch_junit_xml }}"
         when: install is defined
 
       - name: Set necessary facts (Tripleo deployment)
@@ -29,11 +28,8 @@
             validate_vm_live_migration: "{{ validate_vm_live_migration }}"
             validate_vm_migration: "{{ validate_vm_migration }}"
             validate_vm_reboot: "{{ validate_vm_reboot }}"
+            fetch_junit_xml: "{{ fetch_junit_xml }}"
         when: install is not defined
-
-      - name: Set result to failed until we reach the end
-        shell: echo "failed" > /home/stack/migration_result
-        when: migrate|bool
 
 - name: Install migration tool
   hosts: undercloud
@@ -369,16 +365,16 @@
 
             - name: Create network agents validation script
               template:
-                  src: templates/network-agents-validation.sh.j2
-                  dest: "{{ ovn_migration_working_dir }}/network-agents-validation.sh"
+                  src: templates/validate-network-agents.sh.j2
+                  dest: "{{ ovn_migration_working_dir }}/validate-network-agents.sh"
                   mode: 0755
               when: validate_agents|bool
 
             - name: Run network agents validation script
               shell:
                   set -o pipefail &&
-                  {{ ovn_migration_working_dir }}/network-agents-validation.sh ovs
-                  > {{ ovn_migration_working_dir }}/network-agents-validation_ovs.sh.log 2>&1
+                  {{ ovn_migration_working_dir }}/validate-network-agents.sh ovs
+                  > {{ ovn_migration_working_dir }}/validate-network-agents_ovs.sh.log 2>&1
               when:  validate_agents|bool
 
             - name: Start the migration process
@@ -427,8 +423,8 @@
             - name: Run network agents validation script
               shell:
                   set -o pipefail &&
-                  {{ ovn_migration_working_dir }}/network-agents-validation.sh ovn
-                  > {{ ovn_migration_working_dir }}/network-agents-validation_ovn.sh.log 2>&1
+                  {{ ovn_migration_working_dir }}/validate-network-agents.sh ovn
+                  > {{ ovn_migration_working_dir }}/validate-network-agents_ovn.sh.log 2>&1
               when:  validate_agents|bool
 
             - name: Validate network type
@@ -452,16 +448,16 @@
 
             - name: Create nodes validation script
               template:
-                  src: templates/nodes-validation.sh.j2
-                  dest: "{{ ovn_migration_working_dir }}/nodes-validation.sh"
+                  src: templates/validate-nodes.sh.j2
+                  dest: "{{ ovn_migration_working_dir }}/validate-nodes.sh"
                   mode: 0755
               when: validate_nodes|bool
 
             - name: Run nodes validation script
               shell:
                   set -o pipefail &&
-                  {{ ovn_migration_working_dir }}/nodes-validation.sh
-                  > {{ ovn_migration_working_dir }}/nodes-validation.sh.log 2>&1
+                  {{ ovn_migration_working_dir }}/validate-nodes.sh
+                  > {{ ovn_migration_working_dir }}/validate-nodes.sh.log 2>&1
               when:  validate_nodes|bool
 
             - name: Create pcs status validation script
@@ -492,8 +488,27 @@
                   > {{ ovn_migration_working_dir }}/validate-workload-operations.sh.log 2>&1
               when: validate_vm_live_migration|bool or validate_vm_reboot|bool
 
-            - name: Set result file to passed
-              shell: echo "passed" > /home/stack/migration_result
+            - name: Create script for generating junit report
+              template:
+                  src: templates/create-junit-report.sh.j2
+                  dest: "{{ ovn_migration_working_dir }}/create-junit-report.sh"
+                  mode: 0755
+              when: fetch_junit_xml|bool
+
+            - name: Create junit report
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/create-junit-report.sh
+                  > {{ ovn_migration_working_dir }}/create-junit-report.sh.log 2>&1
+              when: fetch_junit_xml|bool
+
+            - name: Fetch junit XML results file
+              fetch:
+                  src: "{{ ovn_migration_working_dir }}/ovn_migration_validations.xml"
+                  dest: "ovn_migration_validations.xml"
+                  flat: yes 
+                  fail_on_missing: yes
+              when: fetch_junit_xml|bool
 
             - name: Create resources cleanup script
               template:

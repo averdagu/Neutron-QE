@@ -222,6 +222,11 @@ subparsers:
                       help: Whether to reboot workload VMs after migration to OVN and check connectivity.
                       default: False
 
+                  fetch_junit_xml:
+                      type: Bool
+                      help: Whether to fetch junit xml with validation results.
+                      default: False
+
             - title: Workarounds
               options:
                   migrate:

@@ -3,14 +3,14 @@ set -x
 
 . {{ overcloudrc }}
 resources_type={{ resources_type }}
+echo TEST: test_network_is_geneve
 if [[ "$resources_type" =~ "sriov" ]] || [[ "$resources_type" =~ "ext" ]]; then
-    echo "This workload type does not create a network that migrates to geneve. Skipping the check."
-    exit 0
+    echo "SKIPPED: This workload type does not create a network that migrates to geneve. Skipping the check."
+    exit
 fi
 network_type=$(openstack network show ovn-migration-net-{{ resource_suffix }} -c provider:network_type -f value)
 if [ "$network_type" == "geneve" ]; then
-    echo "Network type changed successfully to 'geneve' after migration."
+    echo "PASS: Network type changed successfully to 'geneve' after migration."
 else
-    echo "Network type is '$network_type' while expected value is 'geneve'."
-    exit 1
+    echo "FAIL: Network type is '$network_type' while expected value is 'geneve'."
 fi

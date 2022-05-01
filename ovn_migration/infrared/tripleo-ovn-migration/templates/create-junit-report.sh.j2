@@ -1,0 +1,44 @@
+#!/bin/bash
+set -x
+
+cd {{ ovn_migration_working_dir }}
+logs=$(ls validate*log)
+outfile=ovn_migration_validations.xml
+[ -e $outfile ] && rm -rf $outfile
+
+echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" >> $outfile
+echo "<testsuites>" >> $outfile
+echo "<testsuite name=\"OVN Migration validations\">" >> $outfile
+
+for log in $logs;do
+
+  while read line; do
+
+    if [[ $line =~ ^TEST* ]]; then
+            file_name=$(echo $log | sed 's/\.sh\.log//')
+	    test_name=$(echo $line | awk '{print $2}')
+	    classname="ovn_migration_validations.$file_name"
+            echo "<testcase classname=\"$classname\" name=\"$test_name\">" >> $outfile
+    fi
+
+    if [[ $line =~ ^SKIPPED ]]; then
+	    echo "<skipped>$line</skipped>" >> $outfile
+            echo "</testcase>" >> $outfile
+    fi
+
+    if [[ $line =~ ^FAIL ]]; then
+	    echo "<failure>$line</failure>" >> $outfile
+            echo "</testcase>" >> $outfile
+    fi
+
+
+    if [[ $line =~ ^PASS ]]; then
+            echo "</testcase>" >> $outfile
+    fi
+
+  done < $log
+
+done
+
+echo "</testsuite>" >> $outfile
+echo "</testsuites>" >> $outfile
