@@ -505,8 +505,8 @@
             - name: Fetch junit XML results file
               fetch:
                   src: "{{ ovn_migration_working_dir }}/ovn_migration_validations.xml"
-                  dest: "ovn_migration_validations.xml"
-                  flat: yes 
+                  dest: ".workspaces/active/ovn_migration_validations.xml"
+                  flat: yes
                   fail_on_missing: yes
               when: fetch_junit_xml|bool
 
