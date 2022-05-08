@@ -5,8 +5,15 @@ SSH_USER={{ overcloud_ssh_user }}
 
 . ~/stackrc
 
-# (rsafrono) this will not work on OSP17, need to find a way via metalsmith usage or something else
-openstack server list -c Name -c Networks -f value --flavor controller | sed 's/ctlplane=//' > /tmp/nodes_data
+if [ "{{ osp_major_version }}" -le "16" ]; then
+  openstack server list --flavor controller -c Name -c Networks -f value | sed 's/ctlplane=//' > /tmp/nodes_data
+  high_status='Master'
+  low_status='Slave'
+else
+  metalsmith list | grep ctlplane | awk '{print $(NF-5),$(NF-1)}' | sed 's/ctlplane=//' | grep -v compute > /tmp/nodes_data
+  high_status='Promoted'
+  low_status='Unpromoted'
+fi
 
 . {{ overcloudrc }}
 
@@ -22,21 +29,21 @@ check_that_all_services_status(){
   done
 }
 
-check_master_slave_service(){
+check_high_low_service(){
   for service in $@; do
     echo Service $service
     service_status=$(echo "$pcs_status" | grep $service | grep ocf |  awk '{print $(NF-1)}')
     [ "$service_status" == "" ] && continue
-    master=0
+    high_count=0
     for stat in $service_status; do
       echo Stat = $stat
-      if [ "$stat" != "Slave" ] && [ "$stat" != "Master" ]; then
-	      echo "FAIL: Service status is not 'Master' or 'Slave'. something went wrong"
+      if [ "$stat" != "$low_status" ] && [ "$stat" != "$high_status" ]; then
+	      echo "FAIL: Service status is not '$high_status' or '$low_status'. Something went wrong"
 	      exit
       fi
-      [ "$stat" == "Master" ] && master=$(( master+1 ))
+      [ "$stat" == "$high_status" ] && high_count=$(( high_count+1 ))
     done
-    [ $master -ne 1 ] && echo "FAIL: It is expected that the service will have 1 master. Found '$master'" && exit
+    [ $high_count -ne 1 ] && echo "FAIL: It is expected that the service will have 1 $high_status. Found '$high_count'" && exit
     echo
   done
 }
@@ -54,8 +61,8 @@ while read -r node ip; do
   echo Node = $node
   pcs_status=$(timeout 10 ssh -n $SSH_USER@$ip sudo pcs status)
   check_that_all_services_status Started haproxy rabbitmq openstack-cinder-volume
-  check_that_all_services_status Master galera
-  check_master_slave_service redis ovn-dbs
+  check_that_all_services_status $high_status galera
+  check_high_low_service redis ovn-dbs
   check_for_failed_resources
 done < /tmp/nodes_data
 echo PASS

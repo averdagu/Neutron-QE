@@ -6,7 +6,11 @@ SSH_USER={{ overcloud_ssh_user }}
 . /home/stack/stackrc
 
 declare -A node_ips
-openstack server list -c Name -c Networks -f value | sed 's/ctlplane=//' > /tmp/nodes_data
+if [ "{{ osp_major_version }}" -le "16" ]; then
+  openstack server list -c Name -c Networks -f value | sed 's/ctlplane=//' > /tmp/nodes_data
+else
+  metalsmith list | grep ctlplane | awk '{print $(NF-5),$(NF-1)}' | sed 's/ctlplane=//' > /tmp/nodes_data
+fi
 while read -r node ip; do
     node_ips[$node]=$ip
 done < /tmp/nodes_data
