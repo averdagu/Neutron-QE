@@ -17,7 +17,7 @@ case "$1" in
 
     ovn)
 	echo TEST: test_ovn_agents_after_migration
-        valid_ovn_agents='ovn-controller networking-ovn-metadata-agent neutron-sriov-nic-agent'
+        valid_ovn_agents='ovn-controller networking-ovn-metadata-agent neutron-sriov-nic-agent neutron-ovn-metadata-agent'
         while read -r status agent; do
             if [[ "$valid_ovn_agents" =~ $agent ]]; then
                 if [ "$status" != "True" ]; then
