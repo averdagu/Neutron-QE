@@ -134,6 +134,11 @@
               shell: |
                   awk -i inplace '{print} /become/ && !n {print "  when:\n    - ansible_facts.services[item] is defined\n    - ansible_facts.services[item][\"state\"] == \"running\""; n++}' {{ playbooks_path }}/roles/stop-agents/tasks/cleanup.yml
               when: install.fix_dhcp_agents_cleanup|bool
+
+            - name: Fix exitcommand
+              shell: |
+                  sed -i "s/\['exitcommand'\]/.get('exitcommand', [])/" /usr/share/ansible/collections/ansible_collections/containers/podman/plugins/module_utils/podman/podman_container_lib.py
+              when: install.fix_exitcommand|bool
         when: migrate|bool
 
 - name: Prepare for migration

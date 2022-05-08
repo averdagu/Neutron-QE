@@ -195,12 +195,12 @@ subparsers:
                   validate_nodes:
                       type: Bool
                       help: Whether to check if nodes have OVS-specific leftovers (namespaces and interfaces) after migration to OVN.
-                      default: False
+                      default: True
 
                   validate_pcs_status:
                       type: Bool
                       help: Whether to check pcs status on controller nodes.
-                      default: False
+                      default: True
 
                   validate_vm_cold_migration:
                       type: Bool
@@ -210,7 +210,7 @@ subparsers:
                   validate_vm_live_migration:
                       type: Bool
                       help: Whether to live migrate workload VMs after migration to OVN and check connectivity.
-                      default: False
+                      default: True
 
                   validate_vm_migration:
                       type: Bool
@@ -220,12 +220,12 @@ subparsers:
                   validate_vm_reboot:
                       type: Bool
                       help: Whether to reboot workload VMs after migration to OVN and check connectivity.
-                      default: False
+                      default: True
 
                   fetch_junit_xml:
                       type: Bool
                       help: Whether to fetch junit xml with validation results.
-                      default: False
+                      default: True
 
             - title: Workarounds
               options:
@@ -287,4 +287,9 @@ subparsers:
                   fix_dhcp_agents_cleanup:
                       type: Bool
                       help: Temporary workaround. Whether to apply fix from https://review.opendev.org/c/openstack/neutron/+/839392
+                      default: False
+
+                  fix_exitcommand:
+                      type: Bool
+                      help: Temporary workaround. Whether to apply fix for RHBZ 2079244
                       default: False
