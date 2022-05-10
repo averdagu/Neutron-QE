@@ -19,4 +19,5 @@ openstack -vvv overcloud deploy  \
 -e /home/stack/ospd-16-vlan-sriov-hybrid-ha-ovn-squad/l3_fip_qos.yaml \
 -e /home/stack/ospd-16-vlan-sriov-hybrid-ha-ovn-squad/ovn-extras.yaml \
 -e /home/stack/ospd-16-vlan-sriov-hybrid-ha-ovn-squad/docker-images.yaml \
+--ntp-server clock.redhat.com,time1.google.com,time2.google.com,time3.google.com,time4.google.com \
 --log-file overcloud_install.log &> overcloud_install.log

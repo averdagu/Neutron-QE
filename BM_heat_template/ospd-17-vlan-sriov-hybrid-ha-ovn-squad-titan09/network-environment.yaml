@@ -1,40 +1,6 @@
-resource_registry:
-  # Specify the relative/absolute path to the config files you want to use for override the default.
-  OS::TripleO::ComputeSriov::Net::SoftwareConfig: nic-configs/compute.yaml
-  OS::TripleO::ControllerSriov::Net::SoftwareConfig: nic-configs/controller.yaml
-  OS::TripleO::NodeUserData: /usr/share/openstack-tripleo-heat-templates/firstboot/userdata_root_password.yaml
-
 parameter_defaults:
-  # Customize all these values to match the local environment
-  InternalApiNetCidr: 10.20.1.0/24
-  TenantNetCidr: 10.20.2.0/24
-  StorageNetCidr: 10.20.3.0/24
-  StorageMgmtNetCidr: 10.20.4.0/24
-  ExternalNetCidr: 10.46.21.192/26
-
- # CIDR subnet mask length for provisioning network
-  ControlPlaneSubnetCidr: '24'
-  InternalApiAllocationPools: [{'start': '10.20.1.61', 'end': '10.20.1.80'}]
-  TenantAllocationPools: [{'start': '10.20.2.61', 'end': '10.20.2.80'}]
-  StorageAllocationPools: [{'start': '10.20.3.61', 'end': '10.20.3.80'}]
-  StorageMgmtAllocationPools: [{'start': '10.20.4.61', 'end': '10.20.4.80'}]
-
-  # Use an External allocation pool which will leave room for floating IPs
-  ExternalAllocationPools: [{'start': '10.46.21.193', 'end': '10.46.21.212'}]
-  # Set to the router gateway on the external network
-  ExternalInterfaceDefaultRoute: 10.46.21.254
-
-  # Gateway router for the provisioning network (or Undercloud IP)
-  ControlPlaneDefaultRoute: 192.168.25.1
   # Generally the IP of the Undercloud
-  EC2MetadataIp: 192.168.25.1
-
-  InternalApiNetworkVlanID: 230
-  TenantNetworkVlanID: 320
-  StorageNetworkVlanID: 232
-  StorageMgmtNetworkVlanID: 233
-
-  ExternalNetworkVlanID: 319
+  #EC2MetadataIp: 192.168.25.1
 
   DnsServers: ["10.46.0.31","10.46.0.32"]
   NeutronNetworkType: 'vlan,flat'
@@ -45,21 +11,14 @@ parameter_defaults:
   OvercloudComputeSriovFlavor: compute
   NeutronEnableDVR: false
 
- # Number of nodes to deploy.
-  ControllerSriovCount: 3
-  ComputeSriovCount: 2
-
- # Ironic mapping
-  ControllerSriovHostnameFormat: 'controller-%index%'
   ControllerSriovSchedulerHints:
     'capabilities:node': 'controller-%index%'
-  ComputeSriovHostnameFormat: 'computesriov-%index%'
   ComputeSriovSchedulerHints:
     'capabilities:node': 'compute-%index%'
 
   # Internal QE setting, might not be suitable for production deployments.
   # Set root password on overcloud nodes
-  NodeRootPassword: '12345678'
+  #NodeRootPassword: '12345678'
 
   #### Extras ####
   NovaPCIPassthrough:
@@ -75,12 +34,12 @@ parameter_defaults:
   NeutronPhysicalDevMappings: "datacentre:enp7s0f3,datacentre:enp5s0f0"
   NeutronSupportedPCIVendorDevs: ['8086:154c', '8086:1572']
   NeutronSriovNumVFs: ["enp7s0f3:5", "enp5s0f0:5"]
+  NeutronDebug: True
   ComputeSriovParameters:
     KernelArgs: "default_hugepagesz=1GB hugepagesz=1G hugepages=32 iommu=pt intel_iommu=on"
     TunedProfileName: "cpu-partitioning"
     IsolCpusList: "2-23"
     NovaReservedHostMemory: 4096
-  NeutronDebug: True
 
   ###add placement service plugin###
   NeutronServicePlugins: 'qos,ovn-router,trunk,segments,placement'
@@ -88,3 +47,7 @@ parameter_defaults:
   NeutronSriovAgentExtensions: 'qos'
   ExtraConfig:
     neutron::agents::ml2::sriov::resource_provider_hypervisors: "enp7s0f3:%{hiera('fqdn_canonical')},enp5s0f0:%{hiera('fqdn_canonical')}"
+
+  ComputeSriovNetworkConfigTemplate: "/home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/nic-configs/compute.yaml"
+  ControllerSriovNetworkConfigTemplate: "/home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/nic-configs/controller.yaml"
+
