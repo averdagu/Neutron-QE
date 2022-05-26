@@ -1,0 +1,65 @@
+- name: Controller
+  count: {{ (install.controller|default({})).nodes|default(0) or groups.controller|default([])|length or '1' }}
+  hostname_format: controller-%index%
+  defaults:
+    profile: control
+    config_drive:
+      cloud_config:
+        # unique NFS ID
+        bootcmd:
+          - 'host_specific_id="$(hostname)-{{ deployment_unique_id }}"'
+          - 'echo "options nfs nfs4_unique_id=${host_specific_id}" >/etc/modprobe.d/nfsv4_id.conf'
+          - '[ -e /sys/module/nfs/parameters/nfs4_unique_id ] && echo -n ${host_specific_id} >/sys/module/nfs/parameters/nfs4_unique_id'
+    network_config:
+      default_route_network:
+      - External
+      template: /home/stack/OSP17/network/nic-configs/controller{{ ('ipv6' in install.network.protocol) | ternary('-v6','') }}
+    networks:
+    - network: ctlplane
+      vif: true
+    - network: storage
+    - network: storage_mgmt
+    - network: internal_api
+    - network: tenant
+    - network: external
+{# Workaround the rhbz#2066367 for the case where OSP17 is run on top of RHEL9 #}
+{% if install.version|default(undercloud_version)|openstack_release >= 17 and (install.storage|default({})).backend == 'lvm' %}
+  ansible_playbooks:
+    - playbook: /usr/share/ansible/tripleo-playbooks/cli-overcloud-node-growvols.yaml
+      extra_vars:
+        growvols_args: >
+          /=8GB
+          /tmp=1GB
+          /var/log=3GB
+          /var/log/audit=1GB
+          /home=1GB
+          /srv=10GB
+          /var=100%
+{% endif %}
+- name: Compute
+  count: {{ (install.compute|default({})).nodes|default(0) or groups.compute|default([])|length or (install.hybrid is defined)| ternary('1','0') }}
+  hostname_format: compute-%index%
+  defaults:
+    profile: compute
+    network_config:
+      template: /home/stack/OSP17/network/nic-configs/compute-dvr
+    networks:
+    - network: ctlplane
+      vif: true
+    - network: storage
+    - network: internal_api
+    - network: tenant
+    - network: external
+- name: Networker
+  count: 3
+  hostname_format: networker-%index%
+  defaults:
+    profile: networker
+    network_config:
+        template: /home/stack/OSP17/network/nic-configs/networker
+    networks:
+    - network: ctlplane
+      vif: true
+    - network: internal_api
+    - network: tenant
+    - network: external
