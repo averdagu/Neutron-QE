@@ -98,23 +98,3 @@
       ip_subnet: '172.19.3.0/24'
       allocation_pools: [{'start': '172.19.3.4', 'end': '172.19.3.250'}]
       gateway_ip: '172.19.3.254'
-
-- name: OcProvisioning
-  vip: true
-  vlan: 118
-  name_lower: oc_provisioning
-  ip_subnet: '10.9.64.192/26'
-  allocation_pools: [{'start': '10.9.64.196', 'end': '10.9.64.215'}]
-  gateway_ip: '10.9.64.193'
-  subnets:
-    oc_provisioning_leaf1:
-      ip_subnet: '10.9.66.192/26'
-      allocation_pools: [{'start': '10.9.66.196', 'end': '10.9.66.215'}]
-      gateway_ip: '10.9.66.193'
-      vlan: 318
-    oc_provisioning_leaf2:
-      ip_subnet: '10.9.70.192/26'
-      allocation_pools: [{'start': '10.9.70.196', 'end': '10.9.70.215'}]
-      gateway_ip: '10.9.70.193'
-      vlan: 618
-
