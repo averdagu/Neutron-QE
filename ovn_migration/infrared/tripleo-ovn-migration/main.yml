@@ -6,7 +6,15 @@
       - name: Set necessary facts (infrared deployment)
         set_fact:
             migrate: "{{ install.migrate }}"
+            stack_name: "{{ install.stack_name }}"
+            overcloud_ssh_user: "{{ install.overcloud_ssh_user }}"
             reduce_mtu: "{{ install.reduce_mtu }}"
+            create_validation_workload: "{{ install.create_validation_workload }}"
+            export_image: "{{ install.export_image }}"
+            image_to_boot: "{{ install.image_name }}"
+            flavor_to_use: "{{ install.flavor_name }}"
+            server_user_name: "{{ install.server_user_name }}"
+            packet_loss_threshold: "{{ install.allowed_packet_loss }}"
             validate_agents: "{{ install.validate_agents }}"
             validate_nodes: "{{ install.validate_nodes }}"
             validate_pcs_status: "{{ install.validate_pcs_status }}"
@@ -20,7 +28,15 @@
       - name: Set necessary facts (Tripleo deployment)
         set_fact:
             migrate: "{{ migrate }}"
+            stack_name: "{{ stack_name }}"
+            overcloud_ssh_user: "{{ overcloud_ssh_user }}"
             reduce_mtu: "{{ reduce_mtu }}"
+            create_validation_workload: "{{ create_validation_workload }}"
+            export_image: "{{ export_image }}"
+            image_to_boot: "{{ image_name }}"
+            flavor_to_use: "{{ flavor_name }}"
+            server_user_name: "{{ server_user_name }}"
+            packet_loss_threshold: "{{ allowed_packet_loss }}"
             validate_agents: "{{ validate_agents }}"
             validate_nodes: "{{ validate_nodes }}"
             validate_pcs_status: "{{ validate_pcs_status }}"
@@ -30,6 +46,14 @@
             validate_vm_reboot: "{{ validate_vm_reboot }}"
             fetch_junit_xml: "{{ fetch_junit_xml }}"
         when: install is not defined
+
+      - name: Set ovn migration working dir
+        set_fact:
+            ovn_migration_working_dir: /home/stack/ovn_migration
+
+      - name: Set overcloudrc
+        set_fact:
+            overcloudrc: "/home/stack/{{ stack_name }}rc"
 
 - name: Install migration tool
   hosts: undercloud
@@ -139,29 +163,47 @@
               shell: |
                   sed -i "s/\['exitcommand'\]/.get('exitcommand', [])/" /usr/share/ansible/collections/ansible_collections/containers/podman/plugins/module_utils/podman/podman_container_lib.py
               when: install.fix_exitcommand|bool
+
+            - name: Decrease user input timeout for backup and restore
+              shell: |
+                  sed -i '/BACKUP_PROG_COMPRESS_SUFFIX/a\ \ USER_INPUT_TIMEOUT: 5' /usr/share/ansible/roles/backup-and-restore/defaults/main.yml
+                  sed -i '/USER_INPUT_TIMEOUT/a\ \ ISO_RECOVER_MODE: unattended' /usr/share/ansible/roles/backup-and-restore/defaults/main.yml
+              when: install.create_backup|bool
         when: migrate|bool
 
 - name: Prepare for migration
   hosts: undercloud
   tasks:
-      - name: Set ovn migration working dir
-        set_fact:
-            ovn_migration_working_dir: /home/stack/ovn_migration
-
       - name: Delete temp file directory if present
         file:
             state: absent
             path: "{{ ovn_migration_working_dir }}"
+        when: migrate|bool
 
       - name : Create temp file directory if not present
         file:
             state: directory
             path: "{{ ovn_migration_working_dir }}"
+        when: migrate|bool
+
+      - name: Set validations type, ovn migration
+        set_fact:
+            validations_type: "ovn_migration_validations"
+        when: migrate|bool
+
+      - name: Set validations directory, ovn migration
+        set_fact:
+            validations_dir: "{{ ovn_migration_working_dir }}/{{ validations_type }}"
+        when: migrate|bool
+
+      - name : Create validation directory if not present
+        file:
+            state: directory
+            path: "{{ validations_dir }}"
+        when: migrate|bool
 
       - name: Set necessary facts (infrared deployment)
         set_fact:
-            stack_name: "{{ install.stack_name }}"
-            overcloud_ssh_user: "{{ install.overcloud_ssh_user }}"
             is_dvr: "{{ install.dvr }}"
             is_sriov: "{{ install.sriov }}"
             is_after_ffu: "{{ install.after_ffu }}"
@@ -170,18 +212,11 @@
             has_vlan_transparency: "{{ install.vlan_transparency }}"
             has_igmp_snooping: "{{ install.igmp_snooping }}"
             neutron_dns_domain: "{{ install.neutron_dns_domain }}"
-            create_validation_workload: "{{ install.create_validation_workload }}"
             set_geneve: "{{ install.geneve }}"
-            export_image: "{{ install.export_image }}"
-            image_to_boot: "{{ install.image_name }}"
-            flavor_to_use: "{{ install.flavor_name }}"
-            server_user_name: "{{ install.server_user_name }}"
         when: install is defined
 
       - name: Set necessary facts (Tripleo deployment)
         set_fact:
-            stack_name: "{{ stack_name }}"
-            overcloud_ssh_user: "{{ overcloud_ssh_user }}"
             is_dvr: "{{ dvr }}"
             is_sriov: "{{ sriov }}"
             is_after_ffu: "{{ after_ffu }}"
@@ -190,17 +225,8 @@
             has_vlan_transparency: "{{ vlan_transparency }}"
             has_igmp_snooping: "{{ igmp_snooping }}"
             neutron_dns_domain: "{{ neutron_dns_domain }}"
-            create_validation_workload: "{{ create_validation_workload }}"
             set_geneve: "{{ geneve }}"
-            export_image: "{{ export_image }}"
-            image_to_boot: "{{ image_name }}"
-            flavor_to_use: "{{ flavor_name }}"
-            server_user_name: "{{ server_user_name }}"
         when: install is not defined
-
-      - name: Set overcloudrc
-        set_fact:
-            overcloudrc: "/home/stack/{{ stack_name }}rc"
 
       - name: Fail if sriov and dvr specified together
         fail:
@@ -260,7 +286,6 @@
                   resources_type: "{{ install.resources_type }}"
                   fix_mtu: "{{ install.fix_workload_mtu }}"
                   loadbalancer: "{{ install.create_loadbalancer }}"
-                  packet_loss_threshold: "{{ install.allowed_packet_loss }}"
                   shutdown_workload: "{{ install.shutdown_workload }}"
               when: install is defined
 
@@ -270,7 +295,6 @@
                   resources_type: "{{ resources_type }}"
                   fix_mtu: "{{ fix_workload_mtu }}"
                   loadbalancer: "{{ create_loadbalancer }}"
-                  packet_loss_threshold: "{{ allowed_packet_loss }}"
                   shutdown_workload: "{{ shutdown_workload }}"
               when: install is not defined
 
@@ -335,6 +359,46 @@
             - name: Copy the playbook files into ovn_migration working dir
               command: cp -rf {{ playbooks_path }} {{ ovn_migration_working_dir }}
 
+            - name: Delete temp directory for neutron if present
+              file:
+                  state: absent
+                  path: /tmp/neutron
+              when: install.inject_refspec_for_revert != ''
+
+            - name : Create temp directory for neutron if not present
+              file:
+                  state: directory
+                  path: /tmp/neutron
+              when: install.inject_refspec_for_revert != ''
+
+            - name: Clone upstream neutron repo to a temp directory
+              git:
+                  repo: 'https://review.opendev.org/openstack/neutron'
+                  dest: /tmp/neutron
+                  clone: yes
+                  update: yes
+              when: install.inject_refspec_for_revert != ''
+
+            - name: Install playbooks for OVN migration revert
+              shell: |
+                  cd /tmp/neutron
+                  git fetch https://review.opendev.org/openstack/neutron refs/changes/{{ install.inject_refspec_for_revert }} && git cherry-pick FETCH_HEAD
+                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/configure-and-backup-controllers/ {{ ovn_migration_working_dir }}/playbooks/roles
+                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/revert/ {{ ovn_migration_working_dir }}/playbooks/roles
+                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/ovn-migration.yml {{ ovn_migration_working_dir }}/playbooks
+                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/revert.yml {{ ovn_migration_working_dir }}/playbooks
+                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/backup/tasks/main.yml {{ ovn_migration_working_dir }}/playbooks/roles/backup/tasks
+                  if [ "{{ osp_major_version | int }}" == "17" ]; then
+                    curl -Lo /home/stack/ovn_migration.sh http://file.tlv.redhat.com/~rsafrono/files/ovn_migration_revert.sh
+                  else
+                    curl -Lo /home/stack/ovn_migration.sh http://file.tlv.redhat.com/~rsafrono/files/ovn_migration_16.2_revert.sh
+                  fi
+                  sudo mv /usr/bin/ovn_migration.sh /usr/bin/ovn_migration.sh.bak
+                  sudo mv /home/stack/ovn_migration.sh /usr/bin/
+                  sudo chmod +x /usr/bin/ovn_migration.sh
+                  sed -i '/Pre\ migration\ checks/,+6 d' {{ ovn_migration_working_dir }}/playbooks/ovn-migration.yml
+              when: install.inject_refspec_for_revert != ''
+
             - name: Set the public network name (infrared deployment)
               set_fact:
                   public_network: "{{ install.external_network }}"
@@ -379,7 +443,7 @@
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/validate-network-agents.sh ovs
-                  > {{ ovn_migration_working_dir }}/validate-network-agents_ovs.sh.log 2>&1
+                  > {{ validations_dir }}/validate-network-agents_ovs_before_migration.sh.log 2>&1
               when:  validate_agents|bool
 
             - name: Start the migration process
@@ -387,6 +451,42 @@
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/start-ovn-migration.sh start-migration
                   > {{ ovn_migration_working_dir }}/start-ovn-migration.sh.log 2>&1
+        when: migrate|bool
+
+- name: Execute ReaR to restore all controllers
+  import_playbook: roles/revert/tasks/restore_controllers.yml
+  when:
+      - install.revert_to_ovs|bool
+
+- name: Revert OVN to OVS
+  hosts: undercloud
+  tasks:
+      - name: Revert to OVS
+        include_role:
+            name: revert
+        when:
+            - install.revert_to_ovs|bool
+
+- name: Post migration
+  hosts: undercloud
+  tasks:
+      - name: Starting post-migration tasks
+        block:
+
+            - name: Set validations type, revert to ovs
+              set_fact:
+                  validations_type: "ovn_migration_revert_validations"
+              when: install.revert_to_ovs|bool
+
+            - name: Set necessary facts
+              set_fact:
+                  validations_dir: "{{ ovn_migration_working_dir }}/{{ validations_type }}"
+                  validations_report_file: "{{ validations_type }}.xml"
+
+            - name : Create validation directory if not present
+              file:
+                  state: directory
+                  path: "{{ validations_dir }}"
 
             - name: Get status of existing VMs
               shell: |
@@ -422,31 +522,43 @@
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/validate-pinger.sh
-                  > {{ ovn_migration_working_dir }}/validate-pinger.sh.log 2>&1
+                  > {{ validations_dir }}/validate-pinger.sh.log {{ validations_type }}  2>&1
               when: create_vms|bool
 
-            - name: Run network agents validation script
+            - name: Run OVN network agents validation script
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/validate-network-agents.sh ovn
-                  > {{ ovn_migration_working_dir }}/validate-network-agents_ovn.sh.log 2>&1
-              when:  validate_agents|bool
+                  > {{ validations_dir }}/validate-network-agents_ovn.sh.log 2>&1
+              when:
+                  - validate_agents|bool
+                  - not install.revert_to_ovs|bool
+
+            - name: Run OVS network agents validation script
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/validate-network-agents.sh ovs after_revert
+                  > {{ validations_dir }}/validate-network-agents_ovs_after_revert.sh.log 2>&1
+              when:
+                  - validate_agents|bool
+                  - install.revert_to_ovs|bool
 
             - name: Validate network type
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/validate-network.sh
-                  > {{ ovn_migration_working_dir }}/validate-network.sh.log 2>&1
+                  > {{ validations_dir }}/validate-network.sh.log 2>&1
               when:
                   - create_vms|bool
                   - not is_sriov|bool
                   - set_geneve|bool
+                  - not install.revert_to_ovs|bool
 
             - name: Validate load balancer status
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/validate-loadbalancer.sh
-                  > {{ ovn_migration_working_dir }}/validate-loadbalancer.sh.log 2>&1
+                  > {{ validations_dir }}/validate-loadbalancer.sh.log 2>&1
               when:
                   - create_vms|bool
                   - loadbalancer|bool
@@ -456,14 +568,18 @@
                   src: templates/validate-nodes.sh.j2
                   dest: "{{ ovn_migration_working_dir }}/validate-nodes.sh"
                   mode: 0755
-              when: validate_nodes|bool
+              when:
+                  - validate_nodes|bool
+                  - not install.revert_to_ovs|bool
 
             - name: Run nodes validation script
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/validate-nodes.sh
-                  > {{ ovn_migration_working_dir }}/validate-nodes.sh.log 2>&1
-              when:  validate_nodes|bool
+                  > {{ validations_dir }}/validate-nodes.sh.log 2>&1
+              when:
+                  - validate_nodes|bool
+                  - not install.revert_to_ovs|bool
 
             - name: Create pcs status validation script
               template:
@@ -476,7 +592,7 @@
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/validate-pcs-status.sh
-                  > {{ ovn_migration_working_dir }}/validate-pcs-status.sh.log 2>&1
+                  > {{ validations_dir }}/validate-pcs-status.sh.log 2>&1
               when:  validate_pcs_status|bool
 
             - name: Create workload operations validation script
@@ -490,7 +606,7 @@
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/validate-workload-operations.sh
-                  > {{ ovn_migration_working_dir }}/validate-workload-operations.sh.log 2>&1
+                  > {{ validations_dir }}/validate-workload-operations.sh.log 2>&1
               when: validate_vm_live_migration|bool or validate_vm_reboot|bool
 
             - name: Create script for generating junit report
@@ -503,29 +619,37 @@
             - name: Create junit report
               shell:
                   set -o pipefail &&
-                  {{ ovn_migration_working_dir }}/create-junit-report.sh
+                  {{ ovn_migration_working_dir }}/create-junit-report.sh {{ validations_report_file }}
                   > {{ ovn_migration_working_dir }}/create-junit-report.sh.log 2>&1
               when: fetch_junit_xml|bool
 
             - name: Fetch junit XML results file
               fetch:
-                  src: "{{ ovn_migration_working_dir }}/ovn_migration_validations.xml"
-                  dest: ".workspaces/active/ovn_migration_validations.xml"
+                  src: "{{ ovn_migration_working_dir }}/{{ validations_report_file }}"
+                  dest: ".workspaces/active/{{ validations_report_file }}"
                   flat: yes
                   fail_on_missing: yes
               when: fetch_junit_xml|bool
 
-            - name: Create resources cleanup script
-              template:
-                  src: templates/delete-resources.sh.j2
-                  dest: "{{ ovn_migration_working_dir }}/delete-resources.sh"
-                  mode: 0755
-              when: is_sriov|bool
+        when: not install.skip_validations|bool
 
-            - name: Run resources cleanup script
-              shell:
-                  set -o pipefail &&
-                  {{ ovn_migration_working_dir }}/delete-resources.sh
-                  > {{ ovn_migration_working_dir }}/delete-resources.sh.log 2>&1
-              when: is_sriov|bool
-        when: migrate|bool
+- name: Cleanup
+  hosts: undercloud
+  tasks:
+      - name: Create resources cleanup script
+        template:
+            src: templates/delete-resources.sh.j2
+            dest: "{{ ovn_migration_working_dir }}/delete-resources.sh"
+            mode: 0755
+        when:
+            - create_vms|bool
+            - is_sriov|bool
+
+      - name: Run resources cleanup script
+        shell:
+            set -o pipefail &&
+            {{ ovn_migration_working_dir }}/delete-resources.sh
+            > {{ ovn_migration_working_dir }}/delete-resources.sh.log 2>&1
+        when:
+            - create_vms|bool
+            - is_sriov|bool

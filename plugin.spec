@@ -7,41 +7,8 @@ subparsers:
         description: Migrate an existing TripleO overcloud from Neutron ML2OVS plugin to OVN
         include_groups: ["Ansible options", "Inventory", "Common options", "Answers file"]
         groups:
-            - title: Containers
-              options:
-                  registry-namespace:
-                      type: Value
-                      help: The alternative docker registry namespace to use for deployment.
-
-                  registry-prefix:
-                      type: Value
-                      help: The images prefix
-
-                  registry-tag:
-                      type: Value
-                      help: The images tag
-
-                  registry-mirror:
-                      type: Value
-                      help: The alternative docker registry to use for deployment.
-
             - title: Deployment Description
               options:
-                  version:
-                      type: Value
-                      help: |
-                          The product version
-                          Numbers are for OSP releases
-                          Names are for RDO releases
-                          If not given, same version of the undercloud will be used
-                      choices:
-                        - "16.1"
-                        - "16.2"
-                  install_from_package:
-                      type: Bool
-                      help: Install python-networking-ovn-migration-tool rpm
-                      default: True
-
                   dvr:
                       type: Bool
                       help: If the deployment is to be dvr or not
@@ -187,6 +154,8 @@ subparsers:
                       help: Whether to reduce MTU since GENEVE has bigger header than VxLAN. Note, in some cases it may be useful to set it to False and keep current MTU.
                       default: True
 
+            - title: Validations
+              options:
                   validate_agents:
                       type: Bool
                       help: Whether to validate agents health before and after migration to OVN and check that OVS-related agents are removed.
@@ -227,6 +196,11 @@ subparsers:
                       help: Whether to fetch junit xml with validation results.
                       default: True
 
+                  skip_validations:
+                      type: Bool
+                      help: Whether to skip post-migration validations. This is useful if we plan to test migration revert.
+                      default: False
+
             - title: Workarounds
               options:
                   migrate:
@@ -260,7 +234,7 @@ subparsers:
                       default: True
 
                   fix_ansible_inventory:
-                      type: bool
+                      type: Bool
                       help: Temporary workaround. Whether to apply a fix from https://review.opendev.org/c/openstack/neutron/+/834925/
                       default: False
 
@@ -293,3 +267,25 @@ subparsers:
                       type: Bool
                       help: Temporary workaround. Whether to apply fix for RHBZ 2079244
                       default: False
+
+            - title: Revert migration
+              options:
+                  revert_to_ovs:
+                      type: Bool
+                      help: Whether to revert to OVS.
+                      default: False
+
+                  create_backup:
+                      type: Bool
+                      help: Whether to create backup. In case user chooses revert_to_ovs he should enable this as well unless he has a valid backup already and wants to save some time.
+                      default: False
+
+                  backup_migration_ip:
+                      type: Value
+                      help: A host where to save backup.
+                      default: 192.168.24.1
+
+                  inject_refspec_for_revert:
+                      type: Value
+                      help: Temporary workaround. Refspec (e.g. 38/835638/11) from a WIP patch for backup and restore https://review.opendev.org/c/openstack/neutron/+/835638
+                      default: ''

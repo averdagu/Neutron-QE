@@ -1,0 +1,512 @@
+---
+# (rsafrono) this playbook was taken almost as is from [1]
+# just added several tasks to copy backup files from the undercloud node
+# and boot controllers properly in unattended mode.
+# [1] https://gitlab.cee.redhat.com/osp-dfg-enterprise/ir_backup-and-restore/-/blob/master/playbooks/05-restore-controllers.yaml
+#
+# restore all controllers one by one
+# ansible-playbook -i `ir workspace inventory` restore-controllers.yaml
+
+- hosts: hypervisor
+  become: true
+  become_user: root
+  name: copy saved data from the undercloud
+  tasks:
+    - name: copy ctl_plane_backups directory
+      shell: |
+        rm -rf /ctl_plane_backups/
+        mkdir /ctl_plane_backups/
+        scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r  undercloud-0:/ctl_plane_backups/* /ctl_plane_backups/
+        chown -R qemu:qemu /ctl_plane_backups/
+
+- hosts: hypervisor
+  become: true
+  become_user: root
+  name: \*** shutdown all controllers ***/
+  tasks:
+    - name: Set fact with controller names
+      set_fact: controller_names="[ 'controller-0', 'controller-1', 'controller-2' ]"
+
+    - name: Hard shutdown (destroy) all controllers
+      shell: virsh destroy {{ item }}
+      loop: "{{ controller_names }}"
+      ignore_errors: true
+
+- hosts: undercloud
+  become: false
+  name: \*** Get baremetal directory names corresponding to controller VMs and save in hypervisor ***\
+  tasks:
+    - name: Get baremetal directory info for controller-0
+      shell: |
+        source /home/stack/stackrc;
+        c0=`(openstack baremetal node show controller-0 -f yaml -c instance_info | grep display_name | awk '{print $2}')`;
+        echo "VM_Name = Baremetal_Name" > /home/stack/baremetal_controller_directories.txt;
+        echo "$c0 = controller-0" >> /home/stack/baremetal_controller_directories.txt;
+
+    - name: Get baremetal directory info for controller-1
+      shell: |
+        source /home/stack/stackrc;
+        c1=`(openstack baremetal node show controller-1 -f yaml -c instance_info | grep display_name | awk '{print $2}')`;
+        echo "$c1 = controller-1" >> /home/stack/baremetal_controller_directories.txt;
+
+    - name: Get baremetal directory info for controller-2
+      shell: |
+        source /home/stack/stackrc;
+        c2=`(openstack baremetal node show controller-2 -f yaml -c instance_info | grep display_name | awk '{print $2}')`;
+        echo "$c2 = controller-2" >> /home/stack/baremetal_controller_directories.txt
+
+    - name: Save file in hypervisor
+      shell: scp /home/stack/baremetal_controller_directories.txt root@192.168.24.254:/ctl_plane_backups/
+
+- hosts: undercloud
+  become: false
+  name: \*** Fetch controllers IP addresses and set fact ***/
+  tasks:
+    - name: Find controller-0 IP
+      shell: |
+        source /home/stack/stackrc;
+        openstack server show controller-0 -f value -c addresses | sed 's/ctlplane=//';
+      register: control0
+
+    - name: Find controller-1 IP
+      shell: |
+        source /home/stack/stackrc;
+        openstack server show controller-1 -f value -c addresses | sed 's/ctlplane=//';
+      register: control1
+
+    - name: Find controller-2 IP
+      shell: |
+        source /home/stack/stackrc;
+        openstack server show controller-2 -f value -c addresses | sed 's/ctlplane=//';
+      register: control2
+
+    - name: Set fact with controller IPs 
+      set_fact: controllersIP="[ '{{ control0.stdout }}', '{{ control1.stdout }}', '{{ control2.stdout }}' ]"
+
+    - name: Verify controllers are shutdown
+      shell: ping -c 2 "{{ item }}"
+      retries: 100
+      delay: 5
+      register: result
+      until: result.rc == 1
+      loop: "{{ controllersIP }}"
+      ignore_errors: true
+
+- hosts: hypervisor
+  become: true
+  become_user: root
+  tags: redefine_xml
+  name: \*** define boot with cdrom --> hd and iso to restore ***/
+  tasks:
+    - name: Find VM name corresponding to baremetal directory controller-0 
+      shell: cat /ctl_plane_backups/baremetal_controller_directories.txt | grep "= controller-0" | awk '{ print $1 }'
+      register: c0_bm_to_vm
+
+    - name: Find VM name corresponding to baremetal directory controller-1
+      shell: cat /ctl_plane_backups/baremetal_controller_directories.txt | grep "= controller-1" | awk '{ print $1 }'
+      register: c1_bm_to_vm
+
+    - name: Find VM name corresponding to baremetal directory controller-2
+      shell: cat /ctl_plane_backups/baremetal_controller_directories.txt | grep "= controller-2" | awk '{ print $1 }'
+      register: c2_bm_to_vm
+
+    - name: Set fact with controllers baremetal directories 
+      set_fact: bm_to_vm="[ '{{ c0_bm_to_vm.stdout }}', '{{ c1_bm_to_vm.stdout }}', '{{ c2_bm_to_vm.stdout }}' ]"
+
+    - name: Backup controllers guest definition
+      shell: |
+        mkdir -p /root/virsh_xml/backup;
+        virsh dumpxml {{ item }} > /root/virsh_xml/{{ item }}.xml;
+        cp /root/virsh_xml/{{ item }}.xml /root/virsh_xml/backup/{{ item }}.xml;
+      loop: "{{ controller_names }}"
+
+    - name: Edit controllers guest definition - insert boot from cdrom before hd
+      lineinfile:
+        path: /root/virsh_xml/{{ item }}.xml
+        insertbefore: "    <boot dev='hd'/>"
+        line: "    <boot dev='cdrom'/>"
+        state: present
+      loop: "{{ controller_names }}"
+
+    - name: Edit controllers guest definition - enable bootmenu
+      lineinfile:
+        path: /root/virsh_xml/{{ item }}.xml
+        insertafter: "    <boot dev='hd'/>"
+        line: "    <bootmenu enable='yes'/>"
+        state: present
+      loop: "{{ controller_names }}"
+
+    - name: Find controller-0 ISO
+      find:
+        paths: "/ctl_plane_backups/{{ bm_to_vm[0] }}/"
+        patterns: '{{ bm_to_vm[0] }}*.iso'
+      register: controller_0_iso
+
+    - name: Edit conroller-0 guest definition - Add ISO device
+      blockinfile:
+        path: /root/virsh_xml/controller-0.xml
+        insertbefore: "<disk type='file' device='disk'>"
+        marker: " "
+        state: present
+        block: |
+              <disk type='file' device='cdrom'>
+                 <driver name='qemu' type='raw'/>
+                 <source file='{{ controller_0_iso.files[0].path }}'/>
+                 <target dev='hdc' bus='ide'/>
+                 <readonly/>
+                 <address type='drive' controller='0' bus='1' target='0' unit='0'/>
+              </disk>
+
+    - name: Find controller-1 ISO
+      find:
+        paths: "/ctl_plane_backups/{{ bm_to_vm[1] }}/"
+        patterns: '{{ bm_to_vm[1] }}*.iso'
+      register: controller_1_iso
+
+    - name: Edit controller-1 guest definition - Add ISO device
+      blockinfile:
+        path: /root/virsh_xml/controller-1.xml
+        insertbefore: "<disk type='file' device='disk'>"
+        marker: " "
+        state: present
+        block: |
+              <disk type='file' device='cdrom'>
+                 <driver name='qemu' type='raw'/>
+                 <source file='{{ controller_1_iso.files[0].path }}'/>
+                 <target dev='hdc' bus='ide'/>
+                 <readonly/>
+                 <address type='drive' controller='0' bus='1' target='0' unit='0'/>
+              </disk>
+
+    - name: Find controller-2 ISO
+      find:
+        paths: "/ctl_plane_backups/{{ bm_to_vm[2] }}/"
+        patterns: '{{ bm_to_vm[2] }}*.iso'
+      register: controller_2_iso
+
+    - name: Edit controller-2 guest definition - Add ISO device
+      blockinfile:
+        path: /root/virsh_xml/controller-2.xml
+        insertbefore: "<disk type='file' device='disk'>"
+        marker: " "
+        state: present
+        block: |
+              <disk type='file' device='cdrom'>
+                 <driver name='qemu' type='raw'/>
+                 <source file='{{ controller_2_iso.files[0].path }}'/>
+                 <target dev='hdc' bus='ide'/>
+                 <readonly/>
+                 <address type='drive' controller='0' bus='1' target='0' unit='0'/>
+              </disk>
+
+    - name: Define all controllers with updated definitions
+      shell: |
+        virsh define /root/virsh_xml/{{ item }}.xml;
+      loop: "{{ controller_names }}"
+
+# *** restore controller-0 ***
+
+- hosts: hypervisor
+  become: true
+  become_user: root
+  name: \*** restore controller-0 ***/
+  tasks:
+    - name: Retrieve controller-0 VM's corresponding baremetal name
+      shell: cat /ctl_plane_backups/baremetal_controller_directories.txt | grep "controller-0 =" | awk '{ print $3 }'
+      register: control0_baremetal
+
+    - name: Start controller-0
+      shell: virsh start {{ control0_baremetal.stdout }}
+
+    - name: Fetch controller-0 IP address in hypervisor
+      shell: >
+        source /home/stack/stackrc;
+        openstack server show controller-0 -f value -c addresses | sed 's/ctlplane=//'
+      register: control0
+      become: no
+      delegate_to: undercloud-0
+
+    - name: Verify controller-0 is running
+      shell: ping -c 30 "{{ control0.stdout }}"
+      retries: 100
+      delay: 1
+      register: result
+      until: result.rc == 0
+
+    - name: Waiting for controller-0 to shutdown automatically after recovery
+      shell: ping -c 3 -w 3 "{{ control0.stdout }}"
+      retries: 200
+      delay: 1
+      register: result
+      until: result.rc == 1
+      ignore_errors: true
+
+    - name: Force controller-0 to be down, in case it restarted
+      shell: virsh destroy {{ control0_baremetal.stdout }}
+      ignore_errors: true
+
+    - name: Edit controller-0 guest definition - remove existing boot option HD
+      lineinfile:
+        path: /root/virsh_xml/{{ control0_baremetal.stdout }}.xml
+        line: "    <boot dev='hd'/>"
+        state: absent
+
+    - name: Edit controller-0 guest definition - add boot option HD prior to cdrom
+      lineinfile:
+        path: /root/virsh_xml/{{ control0_baremetal.stdout }}.xml
+        insertbefore: "    <boot dev='cdrom'/>"
+        line: "    <boot dev='hd'/>"
+        state: present
+
+    - name: Define controller-0 guest definition
+      shell: virsh define /root/virsh_xml/{{ control0_baremetal.stdout }}.xml
+
+    - name: Start controller-0
+      shell: virsh start {{ control0_baremetal.stdout }}
+
+    - name: Wait for controller-0 processes to start
+      wait_for:
+        timeout: 300
+
+    - name: Verify controller-0 is running
+      shell: ping -c 30 "{{ control0.stdout }}"
+      retries: 200
+      delay: 1
+      register: result
+      until: result.rc == 0
+
+# - hosts: undercloud
+#   become: false
+#   name: \*** validate controller-0 pcs cluster for errors ***/
+#   tasks:
+#     - name: Verify pacemaker does not have any failures
+#       shell: ssh heat-admin@{{ control0.stdout }} "sudo pcs status xml | grep failure\  | wc -l"
+#       register: pacemaker_failures
+#       failed_when: pacemaker_failures.stdout != "0"
+
+#     - debug: msg="!!! Controller-0 restored successfully !!!"
+
+# *** restore controller-1 ***
+
+- hosts: hypervisor
+  become: true
+  become_user: root
+  name: \*** restore controller-1 ***/
+  tasks:
+    - name: Retrieve controller-1 VM's corresponding baremetal name
+      shell: cat /ctl_plane_backups/baremetal_controller_directories.txt | grep "controller-1 =" | awk '{ print $3 }'
+      register: control1_baremetal
+
+    - name: Start controller-1
+      shell: virsh start {{ control1_baremetal.stdout }}
+
+    - name: Fetch controller-1 IP address in hypervisor
+      shell: >
+        source /home/stack/stackrc;
+        openstack server show controller-1 -f value -c addresses | sed 's/ctlplane=//'
+      register: control1
+      become: false
+      delegate_to: undercloud-0
+
+    - name: Wait until controller-1 is running
+      shell: ping -c 30 "{{ control1.stdout }}"
+      retries: 100
+      delay: 1
+      register: result
+      until: result.rc == 0
+
+    - name: Waiting for controller-1 to shutdown automatically after recovery
+      shell: ping -c 3 -w 3 "{{ control1.stdout }}"
+      retries: 200
+      delay: 1
+      register: result
+      until: result.rc == 1
+      ignore_errors: true
+
+    - name: Force controller-1 to be down, in case it restarted
+      shell: virsh destroy {{ control1_baremetal.stdout }}
+      ignore_errors: true
+
+    - name: Edit controller-1 guest definition - remove existing boot option HD
+      lineinfile:
+        path: /root/virsh_xml/{{ control1_baremetal.stdout }}.xml
+        line: "    <boot dev='hd'/>"
+        state: absent
+
+    - name: Edit controller-1 guest definition - add boot option HD prior to cdrom
+      lineinfile:
+        path: /root/virsh_xml/{{ control1_baremetal.stdout }}.xml
+        insertbefore: "    <boot dev='cdrom'/>"
+        line: "    <boot dev='hd'/>"
+        state: present
+
+    - name: Define controller-1 guest definition
+      shell: virsh define /root/virsh_xml/{{ control1_baremetal.stdout }}.xml
+
+    - name: Start controller-1
+      shell: virsh start {{ control1_baremetal.stdout }}
+
+    - name: Wait for controller-1 processes to start
+      wait_for:
+        timeout: 300
+
+    - name: Wait until controller-1 is running
+      shell: ping -c 30 "{{ control1.stdout }}"
+      retries: 100
+      delay: 1
+      register: result
+      until: result.rc == 0
+
+# - hosts: undercloud
+#   become: false
+#   name: \*** validate controller-1 pcs cluster for errors ***/
+#   tasks:
+#     - name: Verify pacemaker does not have any failures
+#       shell: ssh heat-admin@{{ control1.stdout }} "sudo pcs status xml | grep failure\  | wc -l"
+#       register: pacemaker_failures
+#       failed_when: pacemaker_failures.stdout != "0"
+
+#     - debug: msg="!!! Controller-1 restored successfully !!!"
+
+# *** restore controller-2 ***
+
+- hosts: hypervisor
+  become: true
+  become_user: root
+  name: \*** restore controller-2 ***/
+  tasks:
+    - name: Retrieve controller-2 VM's corresponding baremetal name
+      shell: cat /ctl_plane_backups/baremetal_controller_directories.txt | grep "controller-2 =" | awk '{ print $3 }'
+      register: control2_baremetal
+
+    - name: Start controller-2
+      shell: virsh start {{ control2_baremetal.stdout }}
+
+    - name: Fetch controller-2 IP address in hypervisor
+      shell: >
+        source /home/stack/stackrc;
+        openstack server show controller-2 -f value -c addresses | sed 's/ctlplane=//'
+      register: control2
+      become: false
+      delegate_to: undercloud-0
+
+    - name: Wait until controller-2 is running
+      shell: ping -c 30 "{{ control2.stdout }}"
+      retries: 100
+      delay: 1
+      register: result
+      until: result.rc == 0
+
+    - name: Waiting for controller-2 to shutdown automatically after recovery
+      shell: ping -c 3 -w 3 "{{ control2.stdout }}"
+      retries: 200
+      delay: 1
+      register: result
+      until: result.rc == 1
+      ignore_errors: true
+
+    - name: Force controller-2 to be down, in case it restarted
+      shell: virsh destroy {{ control2_baremetal.stdout }}
+      ignore_errors: true
+
+    - name: Edit controller-2 guest definition - remove existing boot option HD
+      lineinfile:
+        path: /root/virsh_xml/{{ control2_baremetal.stdout }}.xml
+        line: "    <boot dev='hd'/>"
+        state: absent
+
+    - name: Edit controller-2 guest definition - add boot option HD prior to cdrom
+      lineinfile:
+        path: /root/virsh_xml/{{ control2_baremetal.stdout }}.xml
+        insertbefore: "    <boot dev='cdrom'/>"
+        line: "    <boot dev='hd'/>"
+        state: present
+
+    - name: Define controller-2 guest definition
+      shell: virsh define /root/virsh_xml/{{ control2_baremetal.stdout }}.xml
+
+    - name: Start controller-2
+      shell: virsh start {{ control2_baremetal.stdout }}
+
+    - name: Wait for controller-2 processes to start
+      wait_for:
+        timeout: 300
+
+    - name: Verify controller-2 is running
+      shell: ping -c 30 "{{ control2.stdout }}"
+      retries: 100
+      delay: 1
+      register: result
+      until: result.rc == 0
+
+# - hosts: undercloud
+#   become: false
+#   name: \*** validate controller-2 pcs cluster for errors ***/
+#   tasks:
+#     - name: Verify pacemaker does not have any failures
+#       shell: ssh heat-admin@{{ control2.stdout }} "sudo pcs status xml | grep failure\  | wc -l"
+#       register: pacemaker_failures
+#       failed_when: pacemaker_failures.stdout != "0"
+#
+#    - debug: msg="!!! Controller-2 restored successfully !!!"
+
+#*** Temp task below to replace silenced pcs-status checks after each controller https://bugzilla.redhat.com/show_bug.cgi?id=1960389
+
+
+# - hosts: undercloud
+#   become: false
+#   name: \*** validate controllers pcs cluster for errors ***/
+#   tasks:
+#     - name: Verify pacemaker does not have any failures
+#       shell: ssh heat-admin@{{ control0.stdout }} "sudo pcs status xml | grep failure\  | wc -l"
+#       register: pacemaker_failures
+#       # failed_when: pacemaker_failures.stdout != "0"
+
+#     # - debug: msg="!!! Cluster restored successfully !!!"
+#     - debug:
+#         var: pacemaker_failures
+
+- hosts: undercloud
+  become: false
+  name: \*** validate controllers are online and not on standby ***/
+  tasks:
+    - name: Verify pacemaker does not have any failures
+      shell: ssh heat-admin@{{ control0.stdout }} "sudo pcs status xml | egrep -i '\<node name=\"controller-[0-2]\" id=\".*\" online=\"true\" standby=\"false\"' | wc -l"
+      register: pacemaker_online
+      failed_when: pacemaker_online.stdout != "3"
+
+    - debug: msg="!!! Cluster restored successfully !!!"
+
+
+# END OF #*** Temp task below to replace silenced pcs-status checks after each controller https://bugzilla.redhat.com/show_bug.cgi?id=1960389
+
+
+## *** check ceph auth ***
+#
+#- hosts: undercloud
+#  become: false
+#  name: \*** check if controllers can still authenticate with ceph post-restore ***/
+#  tasks:
+#    - name: Try to authenticate with Ceph with controller-0
+#      shell: ssh heat-admin@{{ control0.stdout }} "sudo podman exec ceph-mon-controller-0 ceph -n client.admin -k /var/lib/ceph/ceph-authentication.bak -s"
+#      register: ceph_auth_check_0
+#      failed_when: ceph_auth_check_0.rc != 0
+#
+#    - debug: msg="!!! Controller-0 can authenticate with Ceph !!!"
+#
+#    - name: Try to authenticate with Ceph with controller-1
+#      shell: ssh heat-admin@{{ control1.stdout }} "sudo podman exec ceph-mon-controller-1 ceph -n client.admin -k /var/lib/ceph/ceph-authentication.bak -s"
+#      register: ceph_auth_check_1
+#      failed_when: ceph_auth_check_1.rc != 0
+#
+#    - debug: msg="!!! Controller-1 can authenticate with Ceph !!!"
+#
+#    - name: Try to authenticate with Ceph with controller-2
+#      shell: ssh heat-admin@{{ control2.stdout }} "sudo podman exec ceph-mon-controller-2 ceph -n client.admin -k /var/lib/ceph/ceph-authentication.bak -s"
+#      register: ceph_auth_check_2
+#      failed_when: ceph_auth_check_2.rc != 0
+#
+#    - debug: msg="!!! Controller-2 can authenticate with Ceph !!!"
+#
+#...
+

@@ -1,0 +1,47 @@
+---
+- name: Create run-revert script
+  template:
+      src: templates/run-revert.sh.j2
+      dest: "{{ ovn_migration_working_dir }}/run-revert.sh"
+      mode: 0755
+
+- name: Run run-revert script
+  shell:
+      set -o pipefail &&
+      {{ ovn_migration_working_dir }}/run-revert.sh
+      > {{ ovn_migration_working_dir }}/run-revert.sh.log 2>&1
+
+- name: set overcloud deploy ovs script
+  set_fact:
+      overcloud_deploy_ovs_script: '~/overcloud-deploy-ovs.sh'
+
+- name: Copy overcloud deploy script to overcloud-deploy-ovs.sh
+  command: cp -f ~/overcloud_deploy.sh  {{ overcloud_deploy_ovs_script }}
+
+- name: Create ovs-extra.yml config file
+  shell: |
+      echo "parameter_defaults:" > /home/stack/ovs-extra.yml
+      echo "  ForceNeutronDriverUpdate: true" >> /home/stack/ovs-extra.yml
+
+- name: Add ovs-extra.yml env file to overcloud deploy OVS file
+  lineinfile:
+      dest: "{{ overcloud_deploy_ovs_script }}"
+      line: "-e /home/stack/ovs-extra.yml \\"
+      insertbefore: "^--log-file.*"
+
+- name: Add source stackrc
+  shell: |
+      sed -i '/overcloud\ deploy/i source /home/stack/stackrc' {{ overcloud_deploy_ovs_script }}
+
+- name: "Change the neutron_driver in the containers-prepare-parameter.yaml file to ovs"
+  lineinfile:
+    path: ~/containers-prepare-parameter.yaml
+    regexp: "      neutron_driver: ovn"
+    line: "      neutron_driver: ovs"
+    state: present
+
+- name: Updating the overcloud stack with OVS services
+  shell: >
+    set -o pipefail &&
+    {{ overcloud_deploy_ovs_script }} 2>&1 > {{ overcloud_deploy_ovs_script }}.log
+  changed_when: true

@@ -1,8 +1,3 @@
-- name: Delete temp file directory if present
-  file:
-    state: absent
-    path: "{{ ovn_migration_temp_dir }}"
-
 - name : Create temp file directory if not present
   file:
     state: directory

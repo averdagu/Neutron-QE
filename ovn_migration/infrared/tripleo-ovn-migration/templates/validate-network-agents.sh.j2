@@ -4,31 +4,36 @@ set -x
 
 openstack network agent list -c Alive -c Binary -f value | tee /tmp/agents
 
+check_agents(){
+    mech_driver=$1
+    while read -r status agent; do
+    if [[ "$valid_agents" =~ $agent ]]; then
+        if [ "$status" != "True" ]; then
+            echo "FAIL: Bad status of '${agent}': '$status'"
+            exit
+        fi
+    else
+        echo "FAIL: Network agent '$agent' is invalid for $mech_driver"
+        exit
+    fi
+    done < /tmp/agents
+}
+
 case "$1" in
     ovs)
-	echo TEST: test_ovs_agents_status_before_migration
-        while read -r status agent; do
-            if [ "$status" != "True" ]; then
-		 echo "FAIL: Bad status of '${agent}': '$status'"
-		 exit
-	    fi
-        done < /tmp/agents
+	if [ "$2" == "after_revert" ]; then
+	  echo TEST: test_ovs_agents_status_after_revert
+        else
+	  echo TEST: test_ovs_agents_status_before_migration
+	fi
+	valid_agents='neutron-l3-agent neutron-dhcp-agent neutron-openvswitch-agent neutron-metadata-agent neutron-sriov-nic-agent'
+	check_agents OVS
         ;;
 
     ovn)
 	echo TEST: test_ovn_agents_after_migration
-        valid_ovn_agents='ovn-controller networking-ovn-metadata-agent neutron-sriov-nic-agent neutron-ovn-metadata-agent'
-        while read -r status agent; do
-            if [[ "$valid_ovn_agents" =~ $agent ]]; then
-                if [ "$status" != "True" ]; then
-		    echo "FAIL: Bad status of '${agent}': '$status'"
-		    exit
-		fi
-            else
-                echo "FAIL: Network agent '$agent' is invalid for OVN"
-                exit
-            fi
-        done < /tmp/agents
+        valid_agents='ovn-controller networking-ovn-metadata-agent neutron-sriov-nic-agent neutron-ovn-metadata-agent'
+	check_agents OVN
         ;;
 
     *)

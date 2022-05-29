@@ -2,9 +2,9 @@
 set -x
 
 cd {{ ovn_migration_working_dir }}
-logs=$(ls validate*log)
-outfile=ovn_migration_validations.xml
-[ -e $outfile ] && rm -rf $outfile
+logs=$(ls {{ validations_type }}/validate*log)
+outfile=$1
+[ -e $outfile ] && rm -f $outfile
 
 echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" >> $outfile
 echo "<testsuites>" >> $outfile
@@ -15,9 +15,9 @@ for log in $logs;do
   while read line; do
 
     if [[ $line =~ ^TEST* ]]; then
-            file_name=$(echo $log | sed 's/\.sh\.log//')
+            file_name=$(echo $log | sed 's/.*\/\(.*\)\.sh\.log/\1/')
 	    test_name=$(echo $line | awk '{print $2}')
-	    classname="ovn_migration_validations.$file_name"
+	    classname="{{ validations_type }}.$file_name"
             echo "<testcase classname=\"$classname\" name=\"$test_name\">" >> $outfile
     fi
 
