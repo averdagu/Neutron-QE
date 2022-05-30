@@ -12,7 +12,15 @@
             "pm_type":"ipmi",
             "pm_user":"root",
             "pm_password":"calvin",
-            "pm_addr":"10.46.2.73"
+            "pm_addr":"10.46.2.73",
+            "root_device": {
+                "name": "/dev/sda"
+            },
+            "capabilities": {
+              "boot_mode": "uefi",
+              "profile": "compute",
+              "boot_option": "local"
+            }
         },
         {
             "mac":[
@@ -26,7 +34,15 @@
             "pm_type":"ipmi",
             "pm_user":"root",
             "pm_password":"calvin",
-            "pm_addr":"10.46.2.74"
+            "pm_addr":"10.46.2.74",
+            "root_device": {
+                "name": "/dev/sda"
+            },
+            "capabilities": {
+              "boot_mode": "uefi",
+              "profile": "compute",
+              "boot_option": "local"
+            }
         }
     ]
 }

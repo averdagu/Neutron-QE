@@ -23,4 +23,5 @@ openstack -vvv overcloud deploy  \
 -e /home/stack/containers-prepare-parameter.yaml \
 -e /home/stack/ospd-16-vlan-multiple-nic-sriov-hybrid-ha-ovs-titan9/os-net-config-mappings.yaml \
 $docker_images \
+--ntp-server clock.redhat.com,time1.google.com,time2.google.com,time3.google.com,time4.google.com \
 --log-file overcloud_install.log &> overcloud_install.log

@@ -53,7 +53,6 @@ parameter_defaults:
  # Number of nodes to deploy.
   ControllerCount: 3
   ComputeSriovCount: 2
-  NtpServer: clock.redhat.com
 
  # Ironic mapping
   ControllerHostnameFormat: 'controller-%index%'
