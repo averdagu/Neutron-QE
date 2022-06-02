@@ -1,0 +1,70 @@
+- name: ControllerSriov
+  count: 3
+  hostname_format: controller-%index%
+  defaults:
+    profile: control
+    networks:
+      - network: external
+        subnet: external_subnet
+      - network: internal_api
+        subnet: internal_api_subnet
+      - network: storage
+        subnet: storage_subnet
+      - network: storage_mgmt
+        subnet: storage_mgmt_subnet
+      - network: tenant
+        subnet: tenant_subnet
+    network_config:
+      template: /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovs-squad-titan09/nic-configs/controller.yaml
+      default_route_network:
+        - external
+  ansible_playbooks:
+    - playbook: /usr/share/ansible/tripleo-playbooks/cli-overcloud-node-growvols.yaml
+      extra_vars:
+        growvols_args: >
+          /=8GB
+          /tmp=1GB
+          /var/log=3GB
+          /var/log/audit=1GB
+          /home=1GB
+          /srv=10GB
+          /var=100%
+
+- name: ComputeSriov
+  count: 2
+  hostname_format: computesriov-%index%
+  defaults:
+    networks:
+      - network: internal_api
+        subnet: internal_api_subnet
+      - network: tenant
+        subnet: tenant_subnet
+      - network: storage
+        subnet: storage_subnet
+    network_config:
+      template: /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovs-squad-titan09/nic-configs/compute.yaml
+      net_config_data_lookup:
+        nodegroup-dell-poweredge-r730:
+          dmiString: "system-product-name"
+          id: "PowerEdge R730"
+          nic1: "enp7s0f0"
+          nic2: "enp7s0f1"
+          nic3: "enp7s0f2"
+          nic4: "enp7s0f3"
+          nic5: "enp5s0f0"
+    config_drive:
+      cloud_config:
+        ssh_pwauth: true
+        disable_root: false
+        chpasswd:
+          list: |-
+            root:12345678
+          expire: False
+  ansible_playbooks:
+    - playbook: /usr/share/ansible/tripleo-playbooks/cli-overcloud-node-kernelargs.yaml
+      extra_vars:
+        kernel_args: 'default_hugepagesz=1GB hugepagesz=1G hugepages=64 iommu=pt intel_iommu=on tsx=off isolcpus=2-23'
+        tuned_profile: 'cpu-partitioning'
+        tuned_isolated_cores: '2-23'
+        reboot_wait_timeout: 900
+        nova_reserved_host_memory: 4096
