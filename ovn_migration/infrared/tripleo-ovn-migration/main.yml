@@ -55,6 +55,28 @@
         set_fact:
             overcloudrc: "/home/stack/{{ stack_name }}rc"
 
+      - name: Get rhel repo file
+        shell: |
+            basename `ls -1 /etc/yum.repos.d/*rhel* | sort -r | head -1 `
+        register: rhel_repo_file
+
+      - name: Set rhel repo file name
+        set_fact:
+            rhel_repo_file_name: "{{ rhel_repo_file.stdout }}"
+            cacheable: yes
+
+- name: Set repos on controllers in order to be able to deploy a backup tool
+  hosts: controller
+  tasks:
+      - name: Set rhel repo on controllers
+        shell: |
+            repo_file={{ hostvars['undercloud-0']['ansible_facts']['rhel_repo_file_name'] }}
+            sshpass -p 'stack' timeout 10 scp -o StrictHostKeyChecking=no stack@{{ install.backup_migration_ip }}:/etc/yum.repos.d/$repo_file /tmp
+            if [ ! -s /etc/yum.repos.d/$repo_file ]; then
+            sudo cp /tmp/$repo_file /etc/yum.repos.d/
+            fi
+        when: install.create_backup|bool
+
 - name: Install migration tool
   hosts: undercloud
   become: true
