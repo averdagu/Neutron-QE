@@ -2,6 +2,9 @@ parameter_defaults:
     BondInterfaceOvsOptions: bond_mode=active-backup
     #Enable isolated metadata for provider networks
     NeutronEnableIsolatedMetadata: 'True'
+    #password loaded in overcloud server for debugging purposes
+    #only possible in lab envs
+    NodeRootPassword: '12345678'
     Compute0Parameters:
         NeutronBridgeMappings:
         - leaf0:br-ex
@@ -44,7 +47,7 @@ parameter_defaults:
     InternalApiNetworkVlanID: 1185
     NeutronExternalNetworkBridge: ''
     NeutronFlatNetworks: leaf0,leaf1,leaf2
-    NeutronNetworkType: 'vlan,flat'
+    NeutronNetworkType: 'vlan,flat,geneve'
     NeutronNetworkVLANRanges: leaf0:1:1000,leaf1:1:1000,leaf2:1:1000
     NeutronTunnelTypes: geneve
     NovaComputeAvailabilityZone: az-central
@@ -121,6 +124,4 @@ resource_registry:
     OS::TripleO::Compute1::Net::SoftwareConfig: nics/compute1.yaml
     OS::TripleO::Compute2::Net::SoftwareConfig: nics/compute2.yaml
     OS::TripleO::Controller0::Net::SoftwareConfig: nics/controller0.yaml
-    OS::TripleO::Network::Ports::OVNDBsVipPort: /usr/share/openstack-tripleo-heat-templates/network/ports/noop.yaml
-    OS::TripleO::Network::Ports::RedisVipPort: /usr/share/openstack-tripleo-heat-templates/network/ports/noop.yaml
-    OS::TripleO::Services::Docker: OS::Heat::None
+    OS::TripleO::NodeUserData: /usr/share/openstack-tripleo-heat-templates/firstboot/userdata_root_password.yaml
