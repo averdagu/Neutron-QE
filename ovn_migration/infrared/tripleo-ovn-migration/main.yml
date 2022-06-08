@@ -489,6 +489,27 @@
         when:
             - install.revert_to_ovs|bool
 
+- name: Stop DHCP server on external network for post-revert tempest testing
+  hosts: hypervisor
+  tasks:
+      - name: Stop DHCP server
+        shell: |
+            ps aux | grep external | grep -v root | tr -s ' ' | cut -d ' ' -f 2 | xargs kill -15
+        when: install.revert_to_ovs|bool
+
+- name: Configure static IP address on undercloud for post-revert tempest testing
+  hosts: undercloud
+  tasks:
+      - name: Configure static IP address on undercloud
+        shell: |
+            sudo nmcli con add type ethernet con-name custom_connection ifname eth2
+            ip add show dev eth2 | grep inet | grep -v inet6 | tr -s ' ' | cut -d ' ' -f 3 | xargs -I N sudo nmcli con modify custom_connection ipv4.address N
+            sudo nmcli con modify custom_connection ipv4.method static
+            ip add show dev eth2 | grep inet6 | grep -v fe80 | tr -s ' ' | cut -d ' ' -f 3 | cut -d '/' -f 1 | xargs -I N sudo nmcli con modify custom_connection ipv6.address N/64
+            sudo nmcli con modify custom_connection ipv6.method manual
+            sudo nmcli con up custom_connection
+        when: install.revert_to_ovs|bool
+
 - name: Post migration
   hosts: undercloud
   tasks:
