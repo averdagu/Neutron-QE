@@ -31,15 +31,26 @@ validate(){
 
 
 if [ "$validations_type" == "ovn_migration_validations" ]; then
-    echo TEST: test_workload_vms_downtime
-    file_list=`ls {{ ovn_migration_temp_dir }}/*ping.out`
+    echo TEST: test_workload_vms_ipv4_downtime
+    file_list=`ls {{ ovn_migration_temp_dir }}/*ipv4_ping.out`
     [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
 
     for file in $file_list; do
         check_if_pinger_stopped $file
         validate $file
     done
-    echo PASS: test_workload_vms_downtime
+    echo PASS: test_workload_vms_ipv4_downtime
+
+    echo TEST: test_workload_vms_ipv6_downtime
+    file_list=`ls {{ ovn_migration_temp_dir }}/*ipv6_ping.out`
+    [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
+
+    for file in $file_list; do
+        check_if_pinger_stopped $file
+        validate $file
+    done
+    echo PASS: test_workload_vms_ipv6_downtime
+
 
     if [[ "$resources_type" =~ "trunk" ]]; then
         echo TEST: test_trunk_subports_downtime
@@ -73,7 +84,7 @@ if [ "$validations_type" == "ovn_migration_validations" ]; then
 fi
 
 if [ "$validations_type" == "ovn_migration_revert_validations" ]; then
-    echo TEST: test_workload_vms_connectivity
+    echo TEST: test_workload_vms_ipv4_connectivity
     [ ! -e {{ ovn_migration_temp_dir }}/server_fips ] && echo "FAIL: File with VM addresses not found. Something went wrong." && exit
     while read ip; do
         ping -c 3 $ip
@@ -81,7 +92,17 @@ if [ "$validations_type" == "ovn_migration_revert_validations" ]; then
             echo "FAIL: No response from $ip" && exit
         fi
     done < "{{ ovn_migration_temp_dir }}/server_fips"
-    echo PASS: test_workload_vms_connectivity
+    echo PASS: test_workload_vms_ipv4_connectivity
+
+    echo TEST: test_workload_vms_ipv6_connectivity
+    [ ! -e {{ ovn_migration_temp_dir }}/server_ipv6_addresses ] && echo "FAIL: File with VM addresses not found. Something went wrong." && exit
+    while read ip; do
+        ping6 -c 3 $ip
+        if [ $? -ne 0 ]; then
+            echo "FAIL: No response from $ip" && exit
+        fi
+    done < "{{ ovn_migration_temp_dir }}/server_ipv6_addresses"
+    echo PASS: test_workload_vms_ipv6_connectivity
 
     if [[ "$resources_type" =~ "trunk" ]]; then
         echo TEST: test_trunk_subports_connectivity
