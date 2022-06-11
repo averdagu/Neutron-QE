@@ -54,6 +54,7 @@ openstack keypair create ovn-migration-{{ resource_suffix }} --public-key ~/.ssh
 openstack security group create ovn-migration-sg-{{ resource_suffix }}
 
 openstack security group rule create --ingress --protocol icmp ovn-migration-sg-{{ resource_suffix }}
+openstack security group rule create --ingress --protocol ipv6-icmp ovn-migration-sg-{{ resource_suffix }}
 
 openstack security group rule create --ingress --protocol tcp --dst-port 22  ovn-migration-sg-{{ resource_suffix }}
 
@@ -85,6 +86,7 @@ then
 fi
 
 openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  --subnet-range 192.168.168.0/24 ovn-migration-subnet-{{ resource_suffix }}
+openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  --subnet-range 2001:db8:cafe:1::/64 ovn-migration-subnet-ipv6-{{ resource_suffix }} --ip-version 6  --ipv6-ra-mode slaac --ipv6-address-mode slaac
 
 [ "$resources_type" == "dvr" ] && dvr_params="--distributed --no-ha"
 
@@ -93,6 +95,11 @@ openstack router create ovn-migration-router-{{ resource_suffix }} $dvr_params
 openstack router set --external-gateway {{ public_network_name }} ovn-migration-router-{{ resource_suffix }}
 
 openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-{{ resource_suffix }}
+openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-ipv6-{{ resource_suffix }}
+
+router_gw_ipv6_address=`openstack router show ovn-migration-router-{{ resource_suffix }} -c external_gateway_info -f json | jq '.external_gateway_info.external_fixed_ips[1].ip_address' | tr -d '"'`
+# TODO probably we should make this route persistent, i.e. to present even in case undercloud node has been rebooted for some reason (update?)
+sudo ip -6 route add 2001:db8:cafe:1::/64 via $router_gw_ipv6_address
 
 num_hypervisors=`openstack hypervisor list -f value | wc -l`
 
@@ -394,9 +401,12 @@ do
             server_ip=`openstack floating ip create --port $port_id \
             {{ public_network_name }} -c floating_ip_address | grep floating_ip_address \
             | awk '{print $4'}`
-	    fi
+	    # For now (temporary) we support ipv6 only for 'internal' workload types, i.e. behind a router
+	    server_ipv6_address=`openstack port show ovn-migration-port-$type_suffix-{{ resource_suffix }}$index_suffix -c fixed_ips -f json | jq '.fixed_ips[1].ip_address' | tr -d '"'`
+	fi
 
         echo $server_ip >> {{ ovn_migration_temp_dir }}/server_fips
+	[ ! -z "$server_ipv6_address" ] && echo $server_ipv6_address >> {{ ovn_migration_temp_dir }}/server_ipv6_addresses
 	if [[ "$type_suffix" =~ "trunk" ]]; then
 	    TRUNK_VMS_FIPS[$i]=$server_ip
             echo $server_ip >> {{ ovn_migration_temp_dir }}/trunk_vms_fips
@@ -426,22 +436,43 @@ do
     done
 done
 
-for server_ip in `cat {{ ovn_migration_temp_dir }}/server_fips`
-do
-    num_attempts=0
-    vm_reachable="false"
-    while [ "$vm_reachable" != "true" ]
+validate_vms_connectivity (){
+    if [ "$1" == "ipv6" ]; then
+        addresses_file=server_ipv6_addresses
+	[ ! -s {{ ovn_migration_temp_dir }}/$addresses_file ] && return
+	ping_ver=6
+    else
+	addresses_file=server_fips
+    fi
+    for server_ip in `cat {{ ovn_migration_temp_dir }}/$addresses_file`
     do
-        num_attempts=$((num_attempts+1))
-        sleep 1
-        ping -c 3 $server_ip
-        if [ "$?" == "0" ]
-        then
-            vm_reachable="true"
-        else
-            if [ $num_attempts -gt 60 ]
+        num_attempts=0
+        vm_reachable="false"
+        while [ "$vm_reachable" != "true" ]
+        do
+            num_attempts=$((num_attempts+1))
+            sleep 1
+            ping$ping_ver -c 3 $server_ip
+            if [ "$?" == "0" ]
             then
-                echo "VM is not pingable. Something is wrong."
+                vm_reachable="true"
+            else
+                if [ $num_attempts -gt 60 ]
+                then
+                    echo "VM is not responding from $server_ip. Something is wrong."
+                    # printing server information for debugging purposes
+                    server_id=$(openstack server list -f value | grep $server_ip | awk '{print $1}')
+                    openstack console log show $server_id
+                    exit 1
+                fi
+            fi
+        done
+        # TODO at this moment we skip testing ssh via ipv6 until it's stable
+        if [ "$1" != "ipv6" ]; then
+            timeout 20 ssh -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
+            if [ $? -ne 0 ]; then
+                echo "VM not accessible via ssh by $server_ip. Something went wrong."
                 # printing server information for debugging purposes
                 server_id=$(openstack server list -f value | grep $server_ip | awk '{print $1}')
                 openstack console log show $server_id
@@ -449,17 +480,9 @@ do
             fi
         fi
     done
-
-    timeout 20 ssh -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
-    if [ $? -ne 0 ]; then
-        echo "VM not accessible via ssh. Something went wrong."
-        # printing server information for debugging purposes
-        server_id=$(openstack server list -f value | grep $server_ip | awk '{print $1}')
-        openstack console log show $server_id
-        exit 1
-    fi
-done
+}
+validate_vms_connectivity
+validate_vms_connectivity ipv6
 
 wait_until_is_active(){
     name=$1

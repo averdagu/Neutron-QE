@@ -8,18 +8,24 @@ python3 -m venv {{ ovn_migration_temp_dir }}/pinger_venv
 source {{ ovn_migration_temp_dir }}/pinger_venv/bin/activate
 pip install --upgrade pip
 pip install sh
+pip install netaddr
 
 cat > {{ ovn_migration_temp_dir }}/pinger.py <<-EOF
 import sh
 import sys
 import time
+import netaddr
 
 
 def main(ips):
     run_cmds = []
     for ip in ips:
-        ip_out_file = "{{ ovn_migration_temp_dir }}/" + ip.replace('.', '_') + '_ping.out'
-        run_cmds.append(sh.ping('-i', '1', ip, _out=ip_out_file, _bg=True))
+        if netaddr.valid_ipv4(ip):
+            ip_out_file = "/home/stack/ovn_migration/" + ip.replace('.', '_') + '_ping.out'
+            run_cmds.append(sh.ping('-i', '1', ip, _out=ip_out_file, _bg=True))
+        if netaddr.valid_ipv6(ip):
+            ip_out_file = "/home/stack/ovn_migration/" + ip.replace(':', '_') + '_ping.out'
+            run_cmds.append(sh.ping6('-i', '1', ip, _out=ip_out_file, _bg=True))
 
     if not run_cmds:
         return
@@ -50,6 +56,13 @@ for ip in `cat {{ ovn_migration_temp_dir }}/server_fips`
 do
     pinger_ips="$pinger_ips $ip"
 done
+
+if [ -s {{ ovn_migration_temp_dir }}/server_ipv6_addresses ]; then
+    for ip in `cat {{ ovn_migration_temp_dir }}/server_ipv6_addresses`
+    do
+        pinger_ips="$pinger_ips $ip"
+    done
+fi
 
 echo "pinger ips = $pinger_ips"
 
