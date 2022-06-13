@@ -1,5 +1,5 @@
 parameter_defaults:
-    ComputeExtraConfig:
+    ComputeSriovExtraConfig:
         nova::compute::allow_resize_to_same_host: true
-    ControllerExtraConfig:
+    ControllerSriovExtraConfig:
         nova::api::allow_resize_to_same_host: true

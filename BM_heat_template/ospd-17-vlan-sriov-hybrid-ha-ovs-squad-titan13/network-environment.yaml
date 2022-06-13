@@ -16,13 +16,13 @@ parameter_defaults:
   NeutronEnableDVR: false
 
  # Number of nodes to deploy.
-  ControllerCount: 3
+  ControllerSriovCount: 3
   ComputeSriovCount: 2
   NtpServer: clock.redhat.com
 
  # Ironic mapping
-  ControllerHostnameFormat: 'controller-%index%'
-  ControllerSchedulerHints:
+  ControllerSriovHostnameFormat: 'controller-%index%'
+  ControllerSriovSchedulerHints:
     'capabilities:node': 'controller-%index%'
   ComputeSriovHostnameFormat: 'computesriov-%index%'
   ComputeSriovSchedulerHints:
