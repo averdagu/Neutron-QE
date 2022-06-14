@@ -16,7 +16,13 @@
     {{ ovn_migration_temp_dir }}/create-resources.sh.log 2>&1
   changed_when: true
 
-- name: Generate pinger script
+- name: Generate prepare-pinger script
+  template:
+    src: prepare-pinger.sh.j2
+    dest: "{{ ovn_migration_temp_dir }}/prepare-pinger.sh"
+    mode: 0744
+
+- name: Generate start-pinger script
   template:
     src: start-pinger.sh.j2
     dest: "{{ ovn_migration_temp_dir }}/start-pinger.sh"
@@ -34,6 +40,13 @@
     src: validate-pinger.sh.j2
     dest: "{{ ovn_migration_temp_dir }}/validate-pinger.sh"
     mode: 0744
+
+- name: Execute prepare-pinger script
+  shell: >
+      {{ ovn_migration_temp_dir }}/prepare-pinger.sh </dev/null >
+      {{ ovn_migration_temp_dir }}/prepare-pinger.sh.log 2>&1
+  changed_when: False
+  when: not shutdown_workload|bool
 
 - name: Start pinger in background
   shell: >

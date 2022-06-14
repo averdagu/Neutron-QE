@@ -2,54 +2,7 @@
 
 set -x
 
-echo "creating virtualven in {{ ovn_migration_temp_dir }}/pinger_venv"
-# virtualenv {{ ovn_migration_temp_dir }}/pinger_venv
-python3 -m venv {{ ovn_migration_temp_dir }}/pinger_venv
 source {{ ovn_migration_temp_dir }}/pinger_venv/bin/activate
-pip install --upgrade pip
-pip install sh
-pip install netaddr
-
-cat > {{ ovn_migration_temp_dir }}/pinger.py <<-EOF
-import sh
-import sys
-import time
-import netaddr
-
-
-def main(ips):
-    run_cmds = []
-    for ip in ips:
-        if netaddr.valid_ipv4(ip):
-            ip_out_file = "/home/stack/ovn_migration/" + ip.replace('.', '_') + '_ipv4_ping.out'
-            run_cmds.append(sh.ping('-i', '1', ip, _out=ip_out_file, _bg=True))
-        if netaddr.valid_ipv6(ip):
-            ip_out_file = "/home/stack/ovn_migration/" + ip.replace(':', '_') + '_ipv6_ping.out'
-            run_cmds.append(sh.ping6('-i', '1', ip, _out=ip_out_file, _bg=True))
-
-    if not run_cmds:
-        return
-
-    while True:
-        try:
-            cmd_file = open("{{ ovn_migration_temp_dir }}/_pinger_cmd.txt", "r")
-            cmd = cmd_file.readline()
-            if cmd.startswith("exit"):
-                break
-            cmd_file.close()
-        except IOError:
-            time.sleep(3)
-            continue
-
-    for p in run_cmds:
-        p.signal(2)
-        p.wait()
-
-
-if __name__ == '__main__':
-    main(sys.argv[1:])
-
-EOF
 
 pinger_ips=""
 for ip in `cat {{ ovn_migration_temp_dir }}/server_fips`

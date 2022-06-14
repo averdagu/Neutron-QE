@@ -93,6 +93,7 @@ subparsers:
                           sriov_ext_vf: creates VMs only with direct(VF) ports on external network
                           trunk: create VMs with trunk ports
                           trunk_ext: use VMs with trunk ports, launch VMs on external(aka provider) network
+                          trunk_ext_with_normal_int: use VMs with trunk ports, launch VMs on external(aka provider) network. Additionally run VMs according to normal type
                       choices:
                         - normal
                         - normal_ext
@@ -107,7 +108,8 @@ subparsers:
                         - sriov_ext_with_trunk
                         - trunk
                         - trunk_ext
-                      default: trunk_ext
+                        - trunk_ext_with_normal_int
+                      default: trunk_ext_with_normal_int
 
                   image_name:
                       type: Value
