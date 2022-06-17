@@ -13,7 +13,6 @@ openstack -vvv overcloud deploy  \
 -e /home/stack/templates/overcloud-vip-deployed.yaml \
 -e /home/stack/templates/overcloud-networks-deployed.yaml \
 -e /home/stack/templates/overcloud-baremetal-deployed.yaml \
---networks-file /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovs-squad-titan13/network/network_data_v2.yaml \
 -e /usr/share/openstack-tripleo-heat-templates/environments/network-isolation.yaml \
 -e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovs.yaml \
 -e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-sriov.yaml \
