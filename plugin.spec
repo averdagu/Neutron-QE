@@ -49,6 +49,11 @@ subparsers:
                       help: Whether environment has standalone networkers.
                       default: False
 
+                  controller_nfs:
+                      type: Bool
+                      help: Whether controller nfs nodes should work as OVN gateways
+                      default: True
+
                   vlan_transparency:
                       type: Bool
                       help: Whether target environment should have VLAN transtarency enabled.

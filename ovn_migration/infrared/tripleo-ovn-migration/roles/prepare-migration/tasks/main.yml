@@ -195,6 +195,14 @@
       - infrared_deployment|bool
       - has_networker|bool
 
+- name: Enable ControllerStorageNfs chassis as gateway for composable deployments
+  shell: |
+      echo "  ControllerStorageNfs:" >> {{ ovn_extra_configs }}
+      echo "    OVNCMSOptions: enable-chassis-as-gw" >> {{ ovn_extra_configs }}
+  when:
+      - infrared_deployment|bool
+      - has_controller_nfs|bool
+
 - name: Get roles data file for infrared SR-IOV deployments
   shell: |
       roles_file=$(grep '\-r\ ' /home/stack/overcloud-deploy-ovn.sh | sed 's/.*-r\ \(.*\)\ .*/\1/')
