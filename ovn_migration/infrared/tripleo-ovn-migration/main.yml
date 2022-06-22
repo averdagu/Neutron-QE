@@ -407,7 +407,7 @@
               shell: |
                   cd /tmp/neutron
                   git fetch https://review.opendev.org/openstack/neutron refs/changes/{{ install.inject_refspec_for_revert }} && git cherry-pick FETCH_HEAD
-                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/configure-and-backup-controllers/ {{ ovn_migration_working_dir }}/playbooks/roles
+                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/recovery-backup/ {{ ovn_migration_working_dir }}/playbooks/roles
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/revert/ {{ ovn_migration_working_dir }}/playbooks/roles
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/ovn-migration.yml {{ ovn_migration_working_dir }}/playbooks
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/revert.yml {{ ovn_migration_working_dir }}/playbooks
