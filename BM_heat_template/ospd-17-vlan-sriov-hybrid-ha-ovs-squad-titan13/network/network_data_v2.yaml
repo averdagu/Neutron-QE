@@ -48,7 +48,7 @@
   mtu: 1500
   subnets:
     external_subnet:
-      vlan: 411
+      vlan: 408
       ip_subnet: 10.46.54.0/26
       allocation_pools:
       - start: 10.46.54.2
