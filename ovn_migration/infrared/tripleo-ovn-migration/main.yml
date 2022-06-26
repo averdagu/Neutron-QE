@@ -125,6 +125,14 @@
         when: osp_major_version | int >= 17
 
       - set_fact:
+            backup_and_restore_path: '/usr/share/ansible/roles/backup-and-restore'
+        when: osp_major_version | int < 17
+
+      - set_fact:
+            backup_and_restore_path: '/usr/share/ansible/roles/backup_and_restore'
+        when: osp_major_version | int >= 17
+
+      - set_fact:
             workload_script: "{{ playbooks_path }}/roles/resources/create/templates/create-resources.sh.j2"
 
       - name: Apply workarounds
@@ -188,8 +196,8 @@
 
             - name: Decrease user input timeout for backup and restore
               shell: |
-                  sed -i '/BACKUP_PROG_COMPRESS_SUFFIX/a\ \ USER_INPUT_TIMEOUT: 5' /usr/share/ansible/roles/backup-and-restore/defaults/main.yml
-                  sed -i '/USER_INPUT_TIMEOUT/a\ \ ISO_RECOVER_MODE: unattended' /usr/share/ansible/roles/backup-and-restore/defaults/main.yml
+                  sed -i '/BACKUP_PROG_COMPRESS_SUFFIX/a\ \ USER_INPUT_TIMEOUT: 5' {{ backup_and_restore_path }}/defaults/main.yml
+                  sed -i '/USER_INPUT_TIMEOUT/a\ \ ISO_RECOVER_MODE: unattended' {{ backup_and_restore_path }}/defaults/main.yml
               when: install.create_backup|bool
         when: migrate|bool
 
