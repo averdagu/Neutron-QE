@@ -20,7 +20,7 @@ check_for_ovs_nics(){
     echo Checking for ovs-specific NICs on $node
     nics=$(timeout 10 ssh $SSH_USER@${node_ips[$node]} ip addr | grep -v '^\ ' | cut -d ' ' -f 2)
     for nic in $nics; do
-        if [[ "$nic" =~ qbr|qvb|qvo|qr|qg|fg|sg ]]; then
+        if [[ "$nic" =~ qr|qg|fg|sg ]]; then
 	    echo OVS-specific NIC $nic found on $node
 	    return_value=1
 	fi
