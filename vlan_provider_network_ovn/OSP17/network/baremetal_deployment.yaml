@@ -15,7 +15,7 @@
       - network: tenant
         subnet: tenant_subnet
     network_config:
-      template: /home/stack/vlan_provider_network_ovn/OSP17/nic-configs/controller.yaml
+      template: /home/stack/OSP17/nic-configs/controller.yaml
       default_route_network:
         - external
   ansible_playbooks:
@@ -45,7 +45,7 @@
       - network: tenant
         subnet: tenant_subnet
     network_config:
-      template: /home/stack/vlan_provider_network_ovn/OSP17/nic-configs/networker.yaml
+      template: /home/stack/OSP17/nic-configs/networker.yaml
       default_route_network:
         - external
   ansible_playbooks:
@@ -73,7 +73,7 @@
       - network: storage
         subnet: storage_subnet
     network_config:
-      template: /home/stack/vlan_provider_network_ovn/OSP17/nic-configs/compute.yaml
+      template: /home/stack/OSP17/nic-configs/compute.yaml
     config_drive:
       cloud_config:
         ssh_pwauth: true

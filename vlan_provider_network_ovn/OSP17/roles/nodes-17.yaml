@@ -5,6 +5,6 @@ parameter_defaults:
   OvercloudControllerFlavor: controller
   NetworkerCount: 3
   OvercloudNetworkerFlavor: networker
-  ControllerNetworkConfigTemplate: '/home/stack/vlan_provider_network_ovn/OSP17/nic-configs/controller.yaml'
-  ComputeNetworkConfigTemplate: '/home/stack/vlan_provider_network_ovn/OSP17/nic-configs/compute.yaml'
-  NetworkerNetworkConfigTemplate: '/home/stack/vlan_provider_network_ovn/OSP17/nic-configs/networker.yaml'
+  ControllerNetworkConfigTemplate: '/home/stack/OSP17/nic-configs/controller.yaml'
+  ComputeNetworkConfigTemplate: '/home/stack/OSP17/nic-configs/compute.yaml'
+  NetworkerNetworkConfigTemplate: '/home/stack/OSP17/nic-configs/networker.yaml'
