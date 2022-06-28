@@ -280,7 +280,7 @@
 #   name: \*** validate controller-0 pcs cluster for errors ***/
 #   tasks:
 #     - name: Verify pacemaker does not have any failures
-#       shell: ssh heat-admin@{{ control0.stdout }} "sudo pcs status xml | grep failure\  | wc -l"
+#       shell: ssh {{ control0.stdout }} "sudo pcs status xml | grep failure\  | wc -l"
 #       register: pacemaker_failures
 #       failed_when: pacemaker_failures.stdout != "0"
 
@@ -362,7 +362,7 @@
 #   name: \*** validate controller-1 pcs cluster for errors ***/
 #   tasks:
 #     - name: Verify pacemaker does not have any failures
-#       shell: ssh heat-admin@{{ control1.stdout }} "sudo pcs status xml | grep failure\  | wc -l"
+#       shell: ssh {{ control1.stdout }} "sudo pcs status xml | grep failure\  | wc -l"
 #       register: pacemaker_failures
 #       failed_when: pacemaker_failures.stdout != "0"
 
@@ -444,7 +444,7 @@
 #   name: \*** validate controller-2 pcs cluster for errors ***/
 #   tasks:
 #     - name: Verify pacemaker does not have any failures
-#       shell: ssh heat-admin@{{ control2.stdout }} "sudo pcs status xml | grep failure\  | wc -l"
+#       shell: ssh {{ control2.stdout }} "sudo pcs status xml | grep failure\  | wc -l"
 #       register: pacemaker_failures
 #       failed_when: pacemaker_failures.stdout != "0"
 #
@@ -458,7 +458,7 @@
 #   name: \*** validate controllers pcs cluster for errors ***/
 #   tasks:
 #     - name: Verify pacemaker does not have any failures
-#       shell: ssh heat-admin@{{ control0.stdout }} "sudo pcs status xml | grep failure\  | wc -l"
+#       shell: ssh {{ control0.stdout }} "sudo pcs status xml | grep failure\  | wc -l"
 #       register: pacemaker_failures
 #       # failed_when: pacemaker_failures.stdout != "0"
 
@@ -471,7 +471,7 @@
   name: \*** validate controllers are online and not on standby ***/
   tasks:
     - name: Verify pacemaker does not have any failures
-      shell: ssh heat-admin@{{ control0.stdout }} "sudo pcs status xml | egrep -i '\<node name=\"controller-[0-2]\" id=\".*\" online=\"true\" standby=\"false\"' | wc -l"
+      shell: ssh {{ control0.stdout }} "sudo pcs status xml | egrep -i '\<node name=\"controller-[0-2]\" id=\".*\" online=\"true\" standby=\"false\"' | wc -l"
       register: pacemaker_online
       failed_when: pacemaker_online.stdout != "3"
 
@@ -488,21 +488,21 @@
 #  name: \*** check if controllers can still authenticate with ceph post-restore ***/
 #  tasks:
 #    - name: Try to authenticate with Ceph with controller-0
-#      shell: ssh heat-admin@{{ control0.stdout }} "sudo podman exec ceph-mon-controller-0 ceph -n client.admin -k /var/lib/ceph/ceph-authentication.bak -s"
+#      shell: ssh {{ control0.stdout }} "sudo podman exec ceph-mon-controller-0 ceph -n client.admin -k /var/lib/ceph/ceph-authentication.bak -s"
 #      register: ceph_auth_check_0
 #      failed_when: ceph_auth_check_0.rc != 0
 #
 #    - debug: msg="!!! Controller-0 can authenticate with Ceph !!!"
 #
 #    - name: Try to authenticate with Ceph with controller-1
-#      shell: ssh heat-admin@{{ control1.stdout }} "sudo podman exec ceph-mon-controller-1 ceph -n client.admin -k /var/lib/ceph/ceph-authentication.bak -s"
+#      shell: ssh {{ control1.stdout }} "sudo podman exec ceph-mon-controller-1 ceph -n client.admin -k /var/lib/ceph/ceph-authentication.bak -s"
 #      register: ceph_auth_check_1
 #      failed_when: ceph_auth_check_1.rc != 0
 #
 #    - debug: msg="!!! Controller-1 can authenticate with Ceph !!!"
 #
 #    - name: Try to authenticate with Ceph with controller-2
-#      shell: ssh heat-admin@{{ control2.stdout }} "sudo podman exec ceph-mon-controller-2 ceph -n client.admin -k /var/lib/ceph/ceph-authentication.bak -s"
+#      shell: ssh {{ control2.stdout }} "sudo podman exec ceph-mon-controller-2 ceph -n client.admin -k /var/lib/ceph/ceph-authentication.bak -s"
 #      register: ceph_auth_check_2
 #      failed_when: ceph_auth_check_2.rc != 0
 #
