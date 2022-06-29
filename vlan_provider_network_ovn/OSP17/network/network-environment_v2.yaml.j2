@@ -23,7 +23,7 @@ parameter_defaults:
     ControlPlaneSubnetCidr: "24"
     NtpServer: ["clock1.rdu2.redhat.com"]
     NeutronBridgeMappings: "datacentre:br-ex,tenant:br-isolated"
-    NeutronNetworkVLANRanges: "tenant:1000:2000"
+    NeutronNetworkVLANRanges: "tenant:1000:2000,datacentre:218:218"
 {% if install.network.backend == 'vlan' %}
     NeutronGlobalPhysnetMtu: 8996
 {% else %}
