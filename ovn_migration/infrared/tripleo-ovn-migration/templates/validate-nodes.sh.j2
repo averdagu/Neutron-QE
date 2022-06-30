@@ -19,9 +19,11 @@ check_for_ovs_nics(){
     node=$(echo $1 | cut -d'.' -f1)
     echo Checking for ovs-specific NICs on $node
     nics=$(timeout 10 ssh $SSH_USER@${node_ips[$node]} ip addr | grep -v '^\ ' | cut -d ' ' -f 2)
+    [ "$nics" == "" ] && echo FAIL: Can not retrieve NICs from node $node && exit
     for nic in $nics; do
         if [[ "$nic" =~ qr|qg|fg|sg ]]; then
-	    echo OVS-specific NIC $nic found on $node
+	    msg="OVS-specific NIC $nic found on $node"
+	    echo $msg
 	    return_value=1
 	fi
     done
@@ -31,12 +33,30 @@ check_for_ovs_namespaces(){
     node=$(echo $1 | cut -d'.' -f1)
     echo Checking for ovs namespaces on $node
     namespaces=$(timeout 10 ssh $SSH_USER@${node_ips[$node]} ip net | awk '{print $1}')
+    [ "$namespaces" == "" ] && echo FAIL: Can not retrieve namespaces from node $node && exit
     for ns in $namespaces; do
         if ! [[ "$ns" =~ ovnmeta  ]]; then
-	    echo OVS-specific namespace found: $ns on $node
+	    msg="FAIL: OVS-specific namespace found: $ns on $node"
+	    echo $msg
 	    return_value=1
 	fi
     done
+}
+
+check_iptables(){
+  id=${group::8}
+  [ "$1" == "v6" ] && ver=6
+  echo Short ID = $id
+  for node in $(cat /tmp/nodes_data | awk '{print $1}'); do
+    echo node = $node
+    timeout 10 ssh $SSH_USER@${node_ips[$node]}  sudo ip${ver}tables -S | grep -q $id
+    if [ $? -eq 0 ]; then
+      msg="FAIL: There are stale ip${ver}tables rules related to id $id of security group $group, node $node"
+      echo $msg
+      return_value=1
+    fi
+  done
+  echo
 }
 
 echo TEST: test_no_ovs_objects
@@ -45,8 +65,17 @@ for node in `cat /tmp/nodes_data | awk '{print $1}'`; do
     check_for_ovs_namespaces $node
     check_for_ovs_nics $node
 done
+
+secgroups=$(openstack security group list -c ID -f value)
+for group in $secgroups; do
+  sg=${group::8}
+  echo sg = $sg
+  check_iptables
+  check_iptables v6
+done
+
 if [ $return_value -ne 0 ]; then
-    echo FAIL: OVS-specific objects found
+    echo $msg
     exit
 fi
 echo PASS: test_no_ovs_objects

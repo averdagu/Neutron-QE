@@ -1,10 +1,29 @@
 #!/bin/bash
 set -x
+
+SSH_USER={{ overcloud_ssh_user }}
+
+. /home/stack/stackrc
+
+declare -A node_ips
+if [ "{{ osp_major_version }}" -le "16" ]; then
+  openstack server list -c Name -c Networks -f value | sed 's/ctlplane=//' > /tmp/nodes_data
+else
+  metalsmith list | grep ctlplane | awk '{print $(NF-5),$(NF-1)}' | sed 's/ctlplane=//' > /tmp/nodes_data
+fi
+while read -r node ip; do
+    node_ips[$node]=$ip
+done < /tmp/nodes_data
+
 . {{ overcloudrc }}
 server_user_name={{ server_user_name }}
 ovn_migration_dir={{ ovn_migration_working_dir }}
 
 servers=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | awk '{print $1}')
+# TODO(rsafrono) Maybe in case we have more than 2 workload servers (e.g. 4 when using 2 groups,
+# i.e. trunk+normal or ext+int) we should pick 2 different servers for reboot and migration
+servers_for_migration=$(echo $servers | awk '{print $1}')
+servers_for_reboot=$(echo $servers | awk '{print $NF}')
 
 validate_trunk_subports_connectivity(){
     ! [ -s $ovn_migration_dir/trunk_vms_fips ] && return
@@ -36,6 +55,55 @@ validate_vms_connectivity(){
     fi
     echo SSH test succeeded
   done
+  for server_ipv6 in `cat $ovn_migration_dir/server_ipv6_addresses`; do
+    echo Pinging $server_ipv6
+    ping6 -c 3 $server_ipv6
+    [ $? -ne 0 ] && echo FAIL: Server ipv6 $server_ipv6 is not responding. something went wrong && exit
+    echo Ping6 test succeeded
+  done
+}
+
+check_nic(){
+  nic_id=${port::8}
+  echo NIC short ID = $nic_id
+  for node in $(cat /tmp/nodes_data | awk '{print $1}'); do
+    echo node = $node
+    nics=$(timeout 10 ssh $SSH_USER@${node_ips[$node]} ip addr | grep -v '^\ ' | cut -d ' ' -f 2)
+    [ "$nics" == "" ] && echo FAIL: Can not retrieve NICs from node $node && exit
+    for nic in $nics; do
+        if [[ "$nic" =~ $nic_id ]]; then
+            echo FAIL: OVS-specific NIC $nic related to vm $server found on $node
+	    exit
+        fi
+    done
+  done
+  echo
+}
+
+check_iptables(){
+  id=${port::8}
+  [ "$1" == "v6" ] && ver=6
+  echo Short ID = $id
+  for node in $(cat /tmp/nodes_data | awk '{print $1}'); do
+    echo node = $node
+    timeout 10 ssh $SSH_USER@${node_ips[$node]}  sudo ip${ver}tables -S | grep -q $id
+    if [ $? -eq 0 ]; then
+      echo "FAIL: There are stale ip${ver}tables rules related to id $id of vm $server on node $node"
+      exit
+    fi
+  done
+  echo
+}
+
+validate_leftovers_cleanup(){
+  echo Validating leftovers cleanup of server $server
+  ports=$(openstack port list --device-id $server -c ID -f value)
+  for port in $ports; do
+    echo port = $port
+    check_nic
+    check_iptables
+    check_iptables v6
+  done
 }
 
 validate_vm_migration(){
@@ -46,7 +114,7 @@ validate_vm_migration(){
     test_name='test_cold_migrate_vm'
   fi
   echo TEST: $test_name
-  for server in $servers; do
+  for server in $servers_for_migration; do
     echo server id = $server
     host=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
     echo host = $host
@@ -64,8 +132,11 @@ validate_vm_migration(){
     [ "$status" != "ACTIVE" ] && echo FAIL: Server $status is not ACTIVE, something went wrong && exit
     echo Server migrated successfully from $host to $host_new
   done
+  echo Wait 40 seconds to make sure all VMs are ready
+  sleep 40
   validate_vms_connectivity
   validate_trunk_subports_connectivity
+  validate_leftovers_cleanup
   echo PASS
 }
 
@@ -85,7 +156,7 @@ fi
 
 if [ "{{ validate_vm_reboot }}" == "True" ]; then
   echo TEST: test_reboot_vm
-  for server in $servers; do
+  for server in $servers_for_reboot; do
     echo server id = $server
     start_status=$(openstack server show -c status -f value $server)
     echo starting status = $start_status
@@ -123,7 +194,10 @@ if [ "{{ validate_vm_reboot }}" == "True" ]; then
     echo final status = $final_status
     [ "$final_status" != "ACTIVE" ] && echo "FAIL: Final VM status is not ACTIVE. Something went wrong" && exit
   done
+  echo Wait 40 seconds to make sure all VMs are ready
+  sleep 40
   validate_vms_connectivity
   validate_trunk_subports_connectivity
+  validate_leftovers_cleanup
   echo PASS
 fi
