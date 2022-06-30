@@ -51,3 +51,5 @@ parameter_defaults:
   ComputeSriovNetworkConfigTemplate: "/home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/nic-configs/compute.yaml"
   ControllerSriovNetworkConfigTemplate: "/home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/nic-configs/controller.yaml"
 
+parameter_merge_strategies:
+  ExtraConfig: merge
