@@ -33,7 +33,6 @@ check_for_ovs_namespaces(){
     node=$(echo $1 | cut -d'.' -f1)
     echo Checking for ovs namespaces on $node
     namespaces=$(timeout 10 ssh $SSH_USER@${node_ips[$node]} ip net | awk '{print $1}')
-    [ "$namespaces" == "" ] && echo FAIL: Can not retrieve namespaces from node $node && exit
     for ns in $namespaces; do
         if ! [[ "$ns" =~ ovnmeta  ]]; then
 	    msg="FAIL: OVS-specific namespace found: $ns on $node"
