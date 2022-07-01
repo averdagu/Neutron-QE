@@ -199,6 +199,11 @@
                   sed -i '/BACKUP_PROG_COMPRESS_SUFFIX/a\ \ USER_INPUT_TIMEOUT: 5' {{ backup_and_restore_path }}/defaults/main.yml
                   sed -i '/USER_INPUT_TIMEOUT/a\ \ ISO_RECOVER_MODE: unattended' {{ backup_and_restore_path }}/defaults/main.yml
               when: install.create_backup|bool
+
+            - name: Temporary workaround for backup issue bz2101765 on OSP17
+              shell: |
+                  sed  -i "s/.*desync_output.stderr.*/  until: desync_output.stderr == \"\" or '\"WARN\" in desync_output.stderr'/" /usr/share/ansible/roles/backup_and_restore/tasks/db_backup.yml
+              when: osp_major_version | int >= 17
         when: migrate|bool
 
 - name: Prepare for migration
