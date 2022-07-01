@@ -420,6 +420,7 @@
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/ovn-migration.yml {{ ovn_migration_working_dir }}/playbooks
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/revert.yml {{ ovn_migration_working_dir }}/playbooks
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/backup/tasks/main.yml {{ ovn_migration_working_dir }}/playbooks/roles/backup/tasks
+                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/tripleo-update/templates/generate-ovn-extras.sh.j2 {{ ovn_migration_working_dir }}/playbooks/roles/tripleo-update/templates/generate-ovn-extras.sh.j2
                   if [ "{{ osp_major_version | int }}" == "17" ]; then
                     curl -Lo /home/stack/ovn_migration.sh http://file.tlv.redhat.com/~rsafrono/files/ovn_migration_revert.sh
                   else
