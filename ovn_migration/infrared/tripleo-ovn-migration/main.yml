@@ -414,13 +414,13 @@
             - name: Install playbooks for OVN migration revert
               shell: |
                   cd /tmp/neutron
+                  git reset --hard dda8c70fbe3948de45bf72c5f9be7c657ebe42a9
                   git fetch https://review.opendev.org/openstack/neutron refs/changes/{{ install.inject_refspec_for_revert }} && git cherry-pick FETCH_HEAD
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/recovery-backup/ {{ ovn_migration_working_dir }}/playbooks/roles
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/revert/ {{ ovn_migration_working_dir }}/playbooks/roles
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/ovn-migration.yml {{ ovn_migration_working_dir }}/playbooks
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/revert.yml {{ ovn_migration_working_dir }}/playbooks
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/backup/tasks/main.yml {{ ovn_migration_working_dir }}/playbooks/roles/backup/tasks
-                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/tripleo-update/templates/generate-ovn-extras.sh.j2 {{ ovn_migration_working_dir }}/playbooks/roles/tripleo-update/templates/generate-ovn-extras.sh.j2
                   if [ "{{ osp_major_version | int }}" == "17" ]; then
                     curl -Lo /home/stack/ovn_migration.sh http://file.tlv.redhat.com/~rsafrono/files/ovn_migration_revert.sh
                   else
