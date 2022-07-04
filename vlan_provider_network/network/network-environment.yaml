@@ -21,7 +21,7 @@ parameter_defaults:
     ControlPlaneDefaultRoute: '192.168.24.1'
     EC2MetadataIp: '192.168.24.1'
     ControlPlaneSubnetCidr: "24"
-    NtpServer: ["clock1.rdu2.redhat.com"]
+    NtpServer: ["clock.corp.redhat.com"]
     NeutronBridgeMappings: "datacentre:br-ex,tenant:br-isolated"
     NeutronNetworkVLANRanges: "tenant:1000:2000,datacentre:218:218"
     NeutronNetworkType: ['vlan','vxlan']
