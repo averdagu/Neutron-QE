@@ -241,7 +241,7 @@
     - name: Fetch controller-0 IP address in hypervisor
       shell: >
         source /home/stack/stackrc;
-        openstack server show controller-0 -f value -c addresses | sed 's/ctlplane=//'
+        metalsmith list |  grep ctlplane | awk '{print $(NF-5),$(NF-1)}' | grep controller-0 |  sed 's/ctlplane=//' | awk '{print $2}';
       register: control0
       become: no
       delegate_to: undercloud-0
@@ -323,7 +323,7 @@
     - name: Fetch controller-1 IP address in hypervisor
       shell: >
         source /home/stack/stackrc;
-        openstack server show controller-1 -f value -c addresses | sed 's/ctlplane=//'
+        metalsmith list |  grep ctlplane | awk '{print $(NF-5),$(NF-1)}' | grep controller-1 |  sed 's/ctlplane=//' | awk '{print $2}';
       register: control1
       become: false
       delegate_to: undercloud-0
@@ -405,7 +405,7 @@
     - name: Fetch controller-2 IP address in hypervisor
       shell: >
         source /home/stack/stackrc;
-        openstack server show controller-2 -f value -c addresses | sed 's/ctlplane=//'
+        metalsmith list |  grep ctlplane | awk '{print $(NF-5),$(NF-1)}' | grep controller-2 |  sed 's/ctlplane=//' | awk '{print $2}';
       register: control2
       become: false
       delegate_to: undercloud-0
