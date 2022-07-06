@@ -65,19 +65,19 @@
     - name: Find controller-0 IP
       shell: |
         source /home/stack/stackrc;
-        openstack server show controller-0 -f value -c addresses | sed 's/ctlplane=//';
+        metalsmith list |  grep ctlplane | awk '{print $(NF-5),$(NF-1)}' | grep controller-0 |  sed 's/ctlplane=//' | awk '{print $2}';
       register: control0
 
     - name: Find controller-1 IP
       shell: |
         source /home/stack/stackrc;
-        openstack server show controller-1 -f value -c addresses | sed 's/ctlplane=//';
+        metalsmith list |  grep ctlplane | awk '{print $(NF-5),$(NF-1)}' | grep controller-1 |  sed 's/ctlplane=//' | awk '{print $2}';
       register: control1
 
     - name: Find controller-2 IP
       shell: |
         source /home/stack/stackrc;
-        openstack server show controller-2 -f value -c addresses | sed 's/ctlplane=//';
+        metalsmith list |  grep ctlplane | awk '{print $(NF-5),$(NF-1)}' | grep controller-2 |  sed 's/ctlplane=//' | awk '{print $2}';
       register: control2
 
     - name: Set fact with controller IPs 
@@ -142,6 +142,26 @@
         patterns: '{{ bm_to_vm[0] }}*.iso'
       register: controller_0_iso
 
+# (rsafrono) Settings that worked to me, i.e. original hard-coded values of bus_name 'ide' and bus_number '1' do not work on OSP17.
+# Probably the values of OSP17 can also be used for OSP16, but since it's still was not tested I am using 2 different configs that are
+# known to be working
+
+    - set_fact:
+          bus_name: "ide"
+      when: osp_version | int < 17
+
+    - set_fact:
+          bus_name: "sata"
+      when: osp_version | int >= 17
+
+    - set_fact:
+          bus_number: "1"
+      when: osp_version | int < 17
+
+    - set_fact:
+          bus_number: "0"
+      when: osp_version | int >= 17
+
     - name: Edit conroller-0 guest definition - Add ISO device
       blockinfile:
         path: /root/virsh_xml/controller-0.xml
@@ -152,9 +172,9 @@
               <disk type='file' device='cdrom'>
                  <driver name='qemu' type='raw'/>
                  <source file='{{ controller_0_iso.files[0].path }}'/>
-                 <target dev='hdc' bus='ide'/>
+                 <target dev='hdc' bus='{{ bus_name }}'/>
                  <readonly/>
-                 <address type='drive' controller='0' bus='1' target='0' unit='0'/>
+                 <address type='drive' controller='0' bus='{{ bus_number }}' target='0' unit='0'/>
               </disk>
 
     - name: Find controller-1 ISO
@@ -173,9 +193,9 @@
               <disk type='file' device='cdrom'>
                  <driver name='qemu' type='raw'/>
                  <source file='{{ controller_1_iso.files[0].path }}'/>
-                 <target dev='hdc' bus='ide'/>
+                 <target dev='hdc' bus='{{ bus_name }}'/>
                  <readonly/>
-                 <address type='drive' controller='0' bus='1' target='0' unit='0'/>
+                 <address type='drive' controller='0' bus='{{ bus_number }}' target='0' unit='0'/>
               </disk>
 
     - name: Find controller-2 ISO
@@ -194,9 +214,9 @@
               <disk type='file' device='cdrom'>
                  <driver name='qemu' type='raw'/>
                  <source file='{{ controller_2_iso.files[0].path }}'/>
-                 <target dev='hdc' bus='ide'/>
+                 <target dev='hdc' bus='{{ bus_name }}'/>
                  <readonly/>
-                 <address type='drive' controller='0' bus='1' target='0' unit='0'/>
+                 <address type='drive' controller='0' bus='{{ bus_number }}' target='0' unit='0'/>
               </disk>
 
     - name: Define all controllers with updated definitions

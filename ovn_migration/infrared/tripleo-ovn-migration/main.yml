@@ -115,6 +115,7 @@
 
       - set_fact:
             osp_major_version: "{{ puddle_version_output.stdout.split('.')[0] }}"
+            cacheable: yes
 
       - set_fact:
             playbooks_path: '/usr/share/ansible/networking-ovn-migration/playbooks'
@@ -198,6 +199,9 @@
               shell: |
                   sed -i '/BACKUP_PROG_COMPRESS_SUFFIX/a\ \ USER_INPUT_TIMEOUT: 5' {{ backup_and_restore_path }}/defaults/main.yml
                   sed -i '/USER_INPUT_TIMEOUT/a\ \ ISO_RECOVER_MODE: unattended' {{ backup_and_restore_path }}/defaults/main.yml
+                  if [ "{{ osp_major_version | int }}" == "17" ]; then
+                  sed -i '/USER_INPUT_TIMEOUT/a\ \ KERNEL_CMDLINE: unattended' {{ backup_and_restore_path }}/defaults/main.yml
+                  fi
               when: install.create_backup|bool
 
             - name: Temporary workaround for backup issue bz2101765 on OSP17
@@ -493,6 +497,8 @@
 
 - name: Execute ReaR to restore all controllers
   import_playbook: roles/revert/tasks/restore_controllers.yml
+  vars:
+    osp_version: "{{ hostvars['undercloud-0']['ansible_facts']['osp_major_version'] }}"
   when:
       - install.revert_to_ovs|bool
 
