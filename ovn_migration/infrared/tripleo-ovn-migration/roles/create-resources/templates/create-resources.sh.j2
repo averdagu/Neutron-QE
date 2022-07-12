@@ -57,6 +57,7 @@ openstack security group rule create --ingress --protocol icmp ovn-migration-sg-
 openstack security group rule create --ingress --protocol ipv6-icmp ovn-migration-sg-{{ resource_suffix }}
 
 openstack security group rule create --ingress --protocol tcp --dst-port 22  ovn-migration-sg-{{ resource_suffix }}
+openstack security group rule create --ingress --ethertype IPv6 --protocol tcp --dst-port 22:22 ovn-migration-sg-{{ resource_suffix }}
 
 [ "{{ loadbalancer }}" == "True" ] && openstack security group rule create --ingress --protocol tcp --dst-port 80  ovn-migration-sg-{{ resource_suffix }}
 

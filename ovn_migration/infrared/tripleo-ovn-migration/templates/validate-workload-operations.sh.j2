@@ -26,41 +26,57 @@ servers_for_migration=$(echo $servers | awk '{print $1}')
 servers_for_reboot=$(echo $servers | awk '{print $NF}')
 
 validate_trunk_subports_connectivity(){
-    ! [ -s $ovn_migration_dir/trunk_vms_fips ] && return
-    for fip in `cat $ovn_migration_dir/trunk_vms_fips`; do
+    ! [ -s $ovn_migration_dir/trunk_vms_fips ] && return 1
+  echo Validating subports connectivity
+  openstack server show $server -c addresses -f yaml | grep "\ -\ " | sed 's/.*-\ \(.*\)/\1/' > /tmp/ip_addresses
+
+     for fip in `comm -12 <(sort $ovn_migration_dir/trunk_vms_fips) <(sort /tmp/ip_addresses)`; do
         ips=$(timeout 10 ssh $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
         for ip in $ips; do
             timeout 10 ssh $server_user_name@$fip ping -c 3 $ip
             if [ $? -ne 0 ]; then
                 echo "FAIL: Subport connectivity test failed."
-                exit
+                return 1
             fi
         done
     done
+    echo
 }
 
 validate_vms_connectivity(){
-  ! [ -s $ovn_migration_dir/server_fips ] && echo FAIL: File with server fips does not exist && exit
-  for server_ip in `cat $ovn_migration_dir/server_fips`; do
+  ! [ -s $ovn_migration_dir/server_fips ] && echo FAIL: File with server fips does not exist && return 1
+  echo Validating vms connectivity
+  openstack server show $server -c addresses -f yaml | grep "\ -\ " | sed 's/.*-\ \(.*\)/\1/' > /tmp/ip_addresses
+  for server_ip in `comm -12 <(sort $ovn_migration_dir/server_fips) <(sort /tmp/ip_addresses)`; do
     echo Pinging $server_ip
     ping -c 3 $server_ip
-    [ $? -ne 0 ] && echo FAIL: Server ip $server_ip is not responding. something went wrong && exit
+    [ $? -ne 0 ] && echo FAIL: Server ip $server_ip is not responding. && return 1
     echo Ping test succeeded
     echo Testing ssh to $server_ip
     timeout 20 ssh -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
     if [ $? -ne 0 ]; then
-        echo "FAIL: VM address $server_ip is not accessible via ssh. Something went wrong."
-        exit
+        echo "FAIL: VM address $server_ip is not accessible via ssh."
+        return 1
     fi
     echo SSH test succeeded
   done
-  for server_ipv6 in `cat $ovn_migration_dir/server_ipv6_addresses`; do
+  for server_ipv6 in `comm -12 <(sort $ovn_migration_dir/server_ipv6_addresses) <(sort /tmp/ip_addresses)`; do
     echo Pinging $server_ipv6
     ping6 -c 3 $server_ipv6
-    [ $? -ne 0 ] && echo FAIL: Server ipv6 $server_ipv6 is not responding. something went wrong && exit
+    [ $? -ne 0 ] && echo FAIL: Server ipv6 $server_ipv6 is not responding. && return 1
     echo Ping6 test succeeded
+    # TODO ipv6
+    echo Testing ssh to $server_ipv6
+    timeout 20 ssh -6 -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ipv6 date
+    if [ $? -ne 0 ]; then
+        echo "FAIL: VM address $server_ipv6 is not accessible via ssh."
+        return 1
+    fi
+    echo SSH test over IPv6 succeeded
   done
+  echo
 }
 
 check_nic(){
@@ -69,11 +85,11 @@ check_nic(){
   for node in $(cat /tmp/nodes_data | awk '{print $1}'); do
     echo node = $node
     nics=$(timeout 10 ssh $SSH_USER@${node_ips[$node]} ip addr | grep -v '^\ ' | cut -d ' ' -f 2)
-    [ "$nics" == "" ] && echo FAIL: Can not retrieve NICs from node $node && exit
+    [ "$nics" == "" ] && echo FAIL: Can not retrieve NICs from node $node && return 1
     for nic in $nics; do
         if [[ "$nic" =~ $nic_id ]]; then
             echo FAIL: OVS-specific NIC $nic related to vm $server found on $node
-	    exit
+	    return 1
         fi
     done
   done
@@ -89,7 +105,7 @@ check_iptables(){
     timeout 10 ssh $SSH_USER@${node_ips[$node]}  sudo ip${ver}tables -S | grep -q $id
     if [ $? -eq 0 ]; then
       echo "FAIL: There are stale ip${ver}tables rules related to id $id of vm $server on node $node"
-      exit
+      return 1
     fi
   done
   echo
@@ -100,9 +116,7 @@ validate_leftovers_cleanup(){
   ports=$(openstack port list --device-id $server -c ID -f value)
   for port in $ports; do
     echo port = $port
-    check_nic
-    check_iptables
-    check_iptables v6
+    (check_nic && check_iptables && check_iptables v6) || return 1
   done
 }
 
@@ -122,21 +136,19 @@ validate_vm_migration(){
     timeout 120 openstack server migrate $server $extra_param --wait
     host_new=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
     echo new host = $host_new
-    [ "$host" == "$host_new" ] && echo FAIL: Server $server failed to migrate, something went wrong && exit
+    [ "$host" == "$host_new" ] && echo FAIL: Server $server failed to migrate && return 1
     status=$(openstack server show $server -c status  -f value)
     if [ "$1" != "live" ]; then
-      [ "$status" != "VERIFY_RESIZE" ] && echo FAIL: Server $status is not VERIFY_RESIZE, something went wrong && exit
+      [ "$status" != "VERIFY_RESIZE" ] && echo FAIL: Server $status is not VERIFY_RESIZE  && return 1
       openstack server resize confirm $server
       status=$(openstack server show $server -c status  -f value)
     fi
-    [ "$status" != "ACTIVE" ] && echo FAIL: Server $status is not ACTIVE, something went wrong && exit
+    [ "$status" != "ACTIVE" ] && echo FAIL: Server $status is not ACTIVE && return 1
     echo Server migrated successfully from $host to $host_new
   done
   echo Wait 40 seconds to make sure all VMs are ready
   sleep 40
-  validate_vms_connectivity
-  validate_trunk_subports_connectivity
-  validate_leftovers_cleanup
+  (validate_vms_connectivity && validate_trunk_subports_connectivity && validate_leftovers_cleanup) || return 1
   echo PASS
 }
 
@@ -154,18 +166,18 @@ else
   fi
 fi
 
-if [ "{{ validate_vm_reboot }}" == "True" ]; then
+test_reboot_vm(){
   echo TEST: test_reboot_vm
   for server in $servers_for_reboot; do
     echo server id = $server
     start_status=$(openstack server show -c status -f value $server)
     echo starting status = $start_status
-    [ "$start_status" != "ACTIVE" ] && echo FAIL: Starting VM status is not ACTIVE. Something went wrong && exit
+    [ "$start_status" != "ACTIVE" ] && echo FAIL: Starting VM status is not ACTIVE. && return 1
     echo execute server stop command
     openstack server stop $server
     interim_status=$(openstack server show -c status -f value $server)
     echo interim status = $interim_status
-    [ "$interim_status" != "SHUTOFF" ] && echo FAIL: Interim VM status is not SHUTOFF. Something went wrong && exit
+    [ "$interim_status" != "SHUTOFF" ] && echo FAIL: Interim VM status is not SHUTOFF. && return 1
     echo execute server start command
     openstack server start $server
 
@@ -183,7 +195,7 @@ if [ "{{ validate_vm_reboot }}" == "True" ]; then
         else
             if [ $num_attempts -gt 24 ]
             then
-                echo "VM is not up with login prompt even after 2 minutes. Something is wrong."
+                echo "VM is not up with login prompt even after 2 minutes. Something went wrong"
                 # Even though something seems wrong, lets try and continue with status and connectivity checks.
                 break
             fi
@@ -192,12 +204,14 @@ if [ "{{ validate_vm_reboot }}" == "True" ]; then
 
     final_status=$(openstack server show -c status -f value $server)
     echo final status = $final_status
-    [ "$final_status" != "ACTIVE" ] && echo "FAIL: Final VM status is not ACTIVE. Something went wrong" && exit
+    [ "$final_status" != "ACTIVE" ] && echo "FAIL: Final VM status is not ACTIVE." && return 1
   done
   echo Wait 40 seconds to make sure all VMs are ready
   sleep 40
-  validate_vms_connectivity
-  validate_trunk_subports_connectivity
-  validate_leftovers_cleanup
+  (validate_vms_connectivity && validate_trunk_subports_connectivity && validate_leftovers_cleanup) || return 1
   echo PASS
+}
+
+if [ "{{ validate_vm_reboot }}" == "True" ]; then
+  test_reboot_vm
 fi
