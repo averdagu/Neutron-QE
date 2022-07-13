@@ -87,6 +87,7 @@ check_nic(){
     [ "$nics" == "" ] && echo FAIL: Can not retrieve NICs from node $node && return 1
     for nic in $nics; do
         if [[ "$nic" =~ $nic_id ]]; then
+	    [[ "$nic" =~ tap ]] && continue
             echo FAIL: OVS-specific NIC $nic related to vm $server found on $node
 	    return 1
         fi
