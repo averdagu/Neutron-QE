@@ -66,7 +66,6 @@ validate_vms_connectivity(){
     ping6 -c 3 $server_ipv6
     [ $? -ne 0 ] && echo FAIL: Server ipv6 $server_ipv6 is not responding. && return 1
     echo Ping6 test succeeded
-    # TODO ipv6
     echo Testing ssh to $server_ipv6
     timeout 20 ssh -6 -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ipv6 date
@@ -136,19 +135,19 @@ validate_vm_migration(){
     timeout 120 openstack server migrate $server $extra_param --wait
     host_new=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
     echo new host = $host_new
-    [ "$host" == "$host_new" ] && echo FAIL: Server $server failed to migrate && return 1
+    [ "$host" == "$host_new" ] && echo FAIL: Server $server failed to migrate && return
     status=$(openstack server show $server -c status  -f value)
     if [ "$1" != "live" ]; then
-      [ "$status" != "VERIFY_RESIZE" ] && echo FAIL: Server $status is not VERIFY_RESIZE  && return 1
+      [ "$status" != "VERIFY_RESIZE" ] && echo FAIL: Server $status is not VERIFY_RESIZE  && return
       openstack server resize confirm $server
       status=$(openstack server show $server -c status  -f value)
     fi
-    [ "$status" != "ACTIVE" ] && echo FAIL: Server $status is not ACTIVE && return 1
+    [ "$status" != "ACTIVE" ] && echo FAIL: Server $status is not ACTIVE && return
     echo Server migrated successfully from $host to $host_new
   done
   echo Wait 40 seconds to make sure all VMs are ready
   sleep 40
-  (validate_vms_connectivity && validate_trunk_subports_connectivity && validate_leftovers_cleanup) || return 1
+  (validate_vms_connectivity && validate_trunk_subports_connectivity && validate_leftovers_cleanup) || return
   echo PASS
 }
 
@@ -172,12 +171,12 @@ test_reboot_vm(){
     echo server id = $server
     start_status=$(openstack server show -c status -f value $server)
     echo starting status = $start_status
-    [ "$start_status" != "ACTIVE" ] && echo FAIL: Starting VM status is not ACTIVE. && return 1
+    [ "$start_status" != "ACTIVE" ] && echo FAIL: Starting VM status is not ACTIVE. && return
     echo execute server stop command
     openstack server stop $server
     interim_status=$(openstack server show -c status -f value $server)
     echo interim status = $interim_status
-    [ "$interim_status" != "SHUTOFF" ] && echo FAIL: Interim VM status is not SHUTOFF. && return 1
+    [ "$interim_status" != "SHUTOFF" ] && echo FAIL: Interim VM status is not SHUTOFF. && return
     echo execute server start command
     openstack server start $server
 
@@ -204,14 +203,16 @@ test_reboot_vm(){
 
     final_status=$(openstack server show -c status -f value $server)
     echo final status = $final_status
-    [ "$final_status" != "ACTIVE" ] && echo "FAIL: Final VM status is not ACTIVE." && return 1
+    [ "$final_status" != "ACTIVE" ] && echo "FAIL: Final VM status is not ACTIVE." && return
   done
   echo Wait 40 seconds to make sure all VMs are ready
   sleep 40
-  (validate_vms_connectivity && validate_trunk_subports_connectivity && validate_leftovers_cleanup) || return 1
+  (validate_vms_connectivity && validate_trunk_subports_connectivity && validate_leftovers_cleanup) || return
   echo PASS
 }
 
 if [ "{{ validate_vm_reboot }}" == "True" ]; then
   test_reboot_vm
 fi
+
+echo Finished validation of workload operations
