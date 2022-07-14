@@ -133,7 +133,7 @@
 
 - name: Set current bridge mappings into OVN extra configs file
   shell: |
-      master_node=$(grep no_proxy {{ overcloudrc }} | tr ',' "\n" | grep "192.168\|ctlplane")
+      master_node=$(grep no_proxy {{ overcloudrc }} | tr ',' "\n" | grep "192.168\|ctlplane" | sed 's/.*=\(.*\)/\1/')
       current_mappings=$(ssh {{ overcloud_ssh_user }}@$master_node 'sudo podman exec -it neutron_api crudini --get /etc/neutron/plugins/ml2/openvswitch_agent.ini ovs bridge_mappings' | tr -d "\r" )
       echo "parameter_defaults:" > {{ ovn_extra_configs }}
       echo "  ComputeParameters:" >> {{ ovn_extra_configs }}
