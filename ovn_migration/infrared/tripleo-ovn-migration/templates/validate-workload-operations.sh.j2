@@ -19,11 +19,13 @@ done < /tmp/nodes_data
 server_user_name={{ server_user_name }}
 ovn_migration_dir={{ ovn_migration_working_dir }}
 
-servers=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | awk '{print $1}')
-# TODO(rsafrono) Maybe in case we have more than 2 workload servers (e.g. 4 when using 2 groups,
-# i.e. trunk+normal or ext+int) we should pick 2 different servers for reboot and migration
-servers_for_migration=$(echo $servers | awk '{print $1}')
-servers_for_reboot=$(echo $servers | awk '{print $NF}')
+servers_with_trunks=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | grep trunk | awk '{print $1}')
+servers_no_trunks=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | grep -v trunk | awk '{print $1}')
+
+trunk_servers_for_migration=$(echo $servers_with_trunks | awk '{print $1}')
+trunk_servers_for_reboot=$(echo $servers_with_trunks | awk '{print $NF}')
+normal_servers_for_migration=$(echo $servers_no_trunks | awk '{print $1}')
+normal_servers_for_reboot=$(echo $servers_no_trunks | awk '{print $NF}')
 
 validate_trunk_subports_connectivity(){
     ! [ -s $ovn_migration_dir/trunk_vms_fips ] && return 1
@@ -122,12 +124,13 @@ validate_leftovers_cleanup(){
 
 validate_vm_migration(){
   if [ "$1" == "live" ]; then
-    test_name='test_live_migrate_vm'
+    test_name=$(echo ${FUNCNAME[1]} | sed 's/test_/test_live_/')
     extra_param="--live-migration --block-migration"
   else
-    test_name='test_cold_migrate_vm'
+    test_name=$(echo ${FUNCNAME[1]} | sed 's/test_/test_cold_/')
   fi
   echo TEST: $test_name
+  [ "$servers_for_migration" == "" ] && echo SKIPPED: No servers suitable for the test && return
   for server in $servers_for_migration; do
     echo server id = $server
     host=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
@@ -152,22 +155,37 @@ validate_vm_migration(){
   echo PASS
 }
 
+test_vm_migration(){
+  servers_for_migration=$normal_servers_for_migration
+  validate_vm_migration $1
+}
+
+test_migration_vm_with_trunk(){
+  servers_for_migration=$trunk_servers_for_migration
+  validate_vm_migration $1
+}
+
 if [ "{{ validate_vm_migration }}" == "True" ]; then
-  validate_vm_migration
-  validate_vm_migration live
+  test_vm_migration
+  test_vm_migration live
+  test_migration_vm_with_trunk
+  test_migration_vm_with_trunk live
 
 else
   if [ "{{ validate_vm_live_migration }}" == "True" ]; then
-    validate_vm_migration live
+    test_vm_migration live
+    test_migration_vm_with_trunk live
   fi
 
   if [ "{{ validate_vm_cold_migration }}" == "True" ]; then
-    validate_vm_migration
+    test_vm_migration
+    test_migration_vm_with_trunk
   fi
 fi
 
-test_reboot_vm(){
-  echo TEST: test_reboot_vm
+validate_vm_reboot(){
+  echo TEST: ${FUNCNAME[1]}
+  [ "$servers_for_reboot" == "" ] && echo SKIPPED: No servers suitable for the test && return
   for server in $servers_for_reboot; do
     echo server id = $server
     start_status=$(openstack server show -c status -f value $server)
@@ -175,6 +193,7 @@ test_reboot_vm(){
     [ "$start_status" != "ACTIVE" ] && echo FAIL: Starting VM status is not ACTIVE. && return
     echo execute server stop command
     openstack server stop $server
+    sleep 5
     interim_status=$(openstack server show -c status -f value $server)
     echo interim status = $interim_status
     [ "$interim_status" != "SHUTOFF" ] && echo FAIL: Interim VM status is not SHUTOFF. && return
@@ -212,8 +231,19 @@ test_reboot_vm(){
   echo PASS
 }
 
+test_reboot_vm(){
+  servers_for_reboot=$normal_servers_for_reboot
+  validate_vm_reboot
+}
+
+test_reboot_vm_with_trunk(){
+  servers_for_reboot=$trunk_servers_for_reboot
+  validate_vm_reboot
+}
+
 if [ "{{ validate_vm_reboot }}" == "True" ]; then
   test_reboot_vm
+  test_reboot_vm_with_trunk
 fi
 
 echo Finished validation of workload operations
