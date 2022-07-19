@@ -197,7 +197,7 @@
 
 - name: Enable ControllerStorageNfs chassis as gateway for composable deployments
   shell: |
-      echo "  ControllerStorageNfs:" >> {{ ovn_extra_configs }}
+      echo "  ControllerStorageNfsParameters:" >> {{ ovn_extra_configs }}
       echo "    OVNCMSOptions: enable-chassis-as-gw" >> {{ ovn_extra_configs }}
   when:
       - infrared_deployment|bool
