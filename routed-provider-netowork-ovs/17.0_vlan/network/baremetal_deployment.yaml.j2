@@ -13,7 +13,7 @@
     network_config:
       default_route_network:
       - External
-      template: /home/stack/OSP17/network/nic-configs/controller{{ ('ipv6' in install.network.protocol) | ternary('-v6','') }}
+      template: /home/stack/17.0_vlan/network/nics/controller0{{ ('ipv6' in install.network.protocol) | ternary('-v6','') }}.j2
     networks:
     - network: ctlplane
       vif: true
@@ -38,11 +38,11 @@
 {% endif %}
 - name: Compute0
   count: {{ (install.compute|default({})).nodes|default(0) or groups.compute|default([])|length or (install.hybrid is defined)| ternary('1','0') }}
-  hostname_format: compute-%index%
+  hostname_format: computeleaf0-%index%
   defaults:
     profile: compute0
     network_config:
-      template: /home/stack/OSP17/network/nic-configs/compute-dvr
+      template: /home/stack/17.0_vlan/network/nics/compute0.j2
     networks:
     - network: ctlplane
       vif: true
@@ -52,11 +52,11 @@
     - network: external
 - name: Compute1
   count: {{ (install.compute|default({})).nodes|default(0) or groups.compute|default([])|length or (install.hybrid is defined)| ternary('1','0') }}
-  hostname_format: compute-%index%
+  hostname_format: computeleaf1-%index%
   defaults:
     profile: compute1
     network_config:
-      template: /home/stack/OSP17/network/nic-configs/compute-dvr
+      template: /home/stack/17.0_vlan/network/nics/compute1.j2
     networks:
     - network: ctlplane
       vif: true
@@ -66,11 +66,11 @@
     - network: external
 - name: Compute2
   count: {{ (install.compute|default({})).nodes|default(0) or groups.compute|default([])|length or (install.hybrid is defined)| ternary('1','0') }}
-  hostname_format: compute-%index%
+  hostname_format: computeleaf2-%index%
   defaults:
     profile: compute2
     network_config:
-      template: /home/stack/OSP17/network/nic-configs/compute-dvr
+      template: /home/stack/17.0_vlan/network/nics/compute2.j2
     networks:
     - network: ctlplane
       vif: true
@@ -84,7 +84,7 @@
   defaults:
     profile: networker
     network_config:
-        template: /home/stack/OSP17/network/nic-configs/networker
+        template: /home/stack/17.0_vlan/network/nics/networker.j2
     networks:
     - network: ctlplane
       vif: true
