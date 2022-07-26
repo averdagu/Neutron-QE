@@ -99,6 +99,7 @@ openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migra
 openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-ipv6-{{ resource_suffix }}
 
 router_gw_ipv6_address=`openstack router show ovn-migration-router-{{ resource_suffix }} -c external_gateway_info -f json | jq '.external_gateway_info.external_fixed_ips[1].ip_address' | tr -d '"'`
+sudo ip -6 route del 2001:db8:cafe:1::/64 || true
 # TODO probably we should make this route persistent, i.e. to present even in case undercloud node has been rebooted for some reason (update?)
 sudo ip -6 route add 2001:db8:cafe:1::/64 via $router_gw_ipv6_address
 

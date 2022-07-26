@@ -1,0 +1,81 @@
+#!/bin/bash
+set -x
+
+. {{ overcloudrc }}
+server_user_name={{ server_user_name }}
+ovn_migration_dir={{ ovn_migration_working_dir }}
+
+# filtering with excluding ovn-migration-vlan network in order to get a single result. However the vlan network mtu is also reduced automatically and need to be checked, TODO.
+network=$(openstack network list --internal -c ID -c Name -f value | grep 'migration.*pinger' | grep -v vlan | awk '{print $1}')
+network_mtu=$(openstack network show $network -c mtu -f value)
+
+check_server(){
+  ! [ -s $ovn_migration_dir/server_fips ] && echo File with server fips does not exist && exit 1
+  openstack server show $server -c addresses -f value | sed 's/.*=\(.*\)/\1/' | tr -d " " | tr "," "\n" > /tmp/ip_addresses
+  for server_ip in `comm -12 <(sort $ovn_migration_dir/server_fips) <(sort /tmp/ip_addresses)`; do
+    echo Pinging $server_ip
+    ping -c 3 $server_ip
+    [ $? -ne 0 ] && echo Server ip $server_ip is not responding. && exit 1
+    echo Ping IPv4 address succeeded
+
+    echo Testing ssh to $server_ip
+    timeout 20 ssh -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
+    if [ $? -ne 0 ]; then
+        echo "VM address $server_ip is not accessible via ssh."
+        exit 1
+    fi
+    echo SSH to IPv4 address succeeded
+
+    echo Testing mtu via ssh to $server_ip
+    nic=$(timeout 20 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip ip r | grep default | sed 's/.*dev\ \(.*\)\ proto.*/\1/')
+    echo nic = $nic
+    if [ $nic == "" ]; then
+        echo "Can't get NIC name"
+        exit 1
+    fi
+    mtu=$(timeout 20 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip ip a | grep $nic | grep mtu | sed 's/.*mtu\ \(.*\)\ qdisc.*/\1/')
+    echo mtu = $mtu
+    if [ $mtu == "" ]; then
+        echo "Can't get MTU from VM"
+        exit 1
+    fi
+    if [ "$mtu" != "$network_mtu" ]; then
+	echo VM MTU does not match network MTU, something went wrong
+	exit 1
+    else
+        echo VM MTU is set properly
+    fi
+  done
+
+  for server_ipv6 in `comm -12 <(sort $ovn_migration_dir/server_ipv6_addresses) <(sort /tmp/ip_addresses)`; do
+    echo Pinging $server_ipv6
+    ping6 -c 3 $server_ipv6
+    [ $? -ne 0 ] && echo Server ipv6 $server_ipv6 is not responding. && exit 1
+    echo Ping IPv6 address succeeded
+
+    echo Testing ssh to $server_ipv6
+    timeout 20 ssh -6 -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ipv6 date
+    if [ $? -ne 0 ]; then
+        echo "VM address $server_ipv6 is not accessible via ssh."
+        exit 1
+    fi
+    echo SSH to IPv6 address succeeded
+  done
+}
+
+servers_int=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | grep -v ext | awk '{print $1}')
+for server in $servers_int; do
+    openstack server stop $server
+    sleep 5
+    openstack server start $server
+    sleep 5
+done
+
+echo Waiting 60 seconds in order to make sure all is ready
+sleep 60
+
+for server in $servers_int; do
+    check_server
+done

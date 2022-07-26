@@ -474,6 +474,38 @@
                   {{ ovn_migration_working_dir }}/start-ovn-migration.sh reduce-mtu > {{ ovn_migration_working_dir }}/reduce-mtu.log 2>&1
               when: reduce_mtu|bool
 
+            - name: Create MTU check script
+              template:
+                  src: templates/ensure_mtu_is_updated_in_vms.sh.j2
+                  dest: "{{ ovn_migration_working_dir }}/ensure_mtu_is_updated_in_vms.sh"
+                  mode: 0755
+              when:
+                  - reduce_mtu|bool
+                  - install.ensure_mtu_is_updated|bool
+
+            - name: Run MTU check script
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/ensure_mtu_is_updated_in_vms.sh
+                  > {{ validations_dir }}/ensure_mtu_is_updated_in_vms.sh.log 2>&1
+              when:
+                  - reduce_mtu|bool
+                  - install.ensure_mtu_is_updated|bool
+
+            - name: Start pinger in background
+              shell: >
+                  nohup {{ ovn_migration_working_dir }}/start-pinger.sh </dev/null >/dev/null 2>&1 &
+              changed_when: False
+              when: not shutdown_workload|bool
+
+            - name: Start requester in background
+              shell: >
+                  nohup {{ ovn_migration_working_dir }}/start-requester.sh </dev/null >/dev/null 2>&1 &
+              changed_when: False
+              when:
+                  - loadbalancer|bool
+                  - not shutdown_workload|bool
+
             - name: Create network agents validation script
               template:
                   src: templates/validate-network-agents.sh.j2

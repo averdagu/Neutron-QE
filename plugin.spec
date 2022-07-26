@@ -161,6 +161,11 @@ subparsers:
                       help: Whether to reduce MTU since GENEVE has bigger header than VxLAN. Note, in some cases it may be useful to set it to False and keep current MTU.
                       default: True
 
+                  ensure_mtu_is_updated:
+                      type: Bool
+                      help: Whether to go over all relevant workload VMs before migration and make sure MTU is set properly, reboot the VM if needed.
+                      default: False
+
             - title: Validations
               options:
                   validate_agents:

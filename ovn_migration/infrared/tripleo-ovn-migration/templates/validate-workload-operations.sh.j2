@@ -24,13 +24,14 @@ servers_no_trunks=$(openstack server list -c ID -c Name -f value | grep 'migrati
 
 trunk_servers_for_migration=$(echo $servers_with_trunks | awk '{print $1}')
 trunk_servers_for_reboot=$(echo $servers_with_trunks | awk '{print $NF}')
-normal_servers_for_migration=$(echo $servers_no_trunks | awk '{print $1}')
-normal_servers_for_reboot=$(echo $servers_no_trunks | awk '{print $NF}')
+# We use here opposite order in order to increase the chances to migrate VMs from different compute nodes
+normal_servers_for_migration=$(echo $servers_no_trunks | awk '{print $NF}')
+normal_servers_for_reboot=$(echo $servers_no_trunks | awk '{print $1}')
 
 validate_trunk_subports_connectivity(){
     ! [ -s $ovn_migration_dir/trunk_vms_fips ] && return 1
   echo Validating subports connectivity
-  openstack server show $server -c addresses -f yaml | grep "\ -\ " | sed 's/.*-\ \(.*\)/\1/' > /tmp/ip_addresses
+  openstack server show $server -c addresses -f value | sed 's/.*=\(.*\)/\1/' | tr -d " " | tr "," "\n" > /tmp/ip_addresses
 
      for fip in `comm -12 <(sort $ovn_migration_dir/trunk_vms_fips) <(sort /tmp/ip_addresses)`; do
         ips=$(timeout 10 ssh $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
@@ -48,7 +49,7 @@ validate_trunk_subports_connectivity(){
 validate_vms_connectivity(){
   ! [ -s $ovn_migration_dir/server_fips ] && echo FAIL: File with server fips does not exist && return 1
   echo Validating vms connectivity
-  openstack server show $server -c addresses -f yaml | grep "\ -\ " | sed 's/.*-\ \(.*\)/\1/' > /tmp/ip_addresses
+  openstack server show $server -c addresses -f value | sed 's/.*=\(.*\)/\1/' | tr -d " " | tr "," "\n" > /tmp/ip_addresses
   for server_ip in `comm -12 <(sort $ovn_migration_dir/server_fips) <(sort /tmp/ip_addresses)`; do
     echo Pinging $server_ip
     ping -c 3 $server_ip
@@ -142,16 +143,16 @@ validate_vm_migration(){
     [ "$host" == "$host_new" ] && echo FAIL: Server $server failed to migrate && return
     status=$(openstack server show $server -c status  -f value)
     if [ "$1" != "live" ]; then
-      [ "$status" != "VERIFY_RESIZE" ] && echo FAIL: Server $status is not VERIFY_RESIZE  && return
+      [ "$status" != "VERIFY_RESIZE" ] && echo FAIL: Server $server status is not VERIFY_RESIZE, actual status is $status  && return
       openstack server resize confirm $server
       status=$(openstack server show $server -c status  -f value)
     fi
-    [ "$status" != "ACTIVE" ] && echo FAIL: Server $status is not ACTIVE && return
+    [ "$status" != "ACTIVE" ] && echo FAIL: Server $server status is not ACTIVE, actual status is $status && return
     echo Server migrated successfully from $host to $host_new
+    echo Wait 40 seconds before starting validations to make sure all is ready
+    sleep 40
+    (validate_vms_connectivity && validate_trunk_subports_connectivity && validate_leftovers_cleanup) || return
   done
-  echo Wait 40 seconds to make sure all VMs are ready
-  sleep 40
-  (validate_vms_connectivity && validate_trunk_subports_connectivity && validate_leftovers_cleanup) || return
   echo PASS
 }
 
@@ -224,10 +225,10 @@ validate_vm_reboot(){
     final_status=$(openstack server show -c status -f value $server)
     echo final status = $final_status
     [ "$final_status" != "ACTIVE" ] && echo "FAIL: Final VM status is not ACTIVE." && return
+    echo Wait 40 seconds before staring validations to make sure all is ready
+    sleep 40
+    (validate_vms_connectivity && validate_trunk_subports_connectivity) || return
   done
-  echo Wait 40 seconds to make sure all VMs are ready
-  sleep 40
-  (validate_vms_connectivity && validate_trunk_subports_connectivity && validate_leftovers_cleanup) || return
   echo PASS
 }
 
