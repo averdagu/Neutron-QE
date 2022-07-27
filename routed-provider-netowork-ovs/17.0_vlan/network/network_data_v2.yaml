@@ -19,7 +19,7 @@
       vlan: 10
       ip_subnet: '10.0.10.0/24'
       allocation_pools:
-      - {'start': '10.0.10.100', 'end': '10.0.10.149'}$
+      - {'start': '10.0.10.100', 'end': '10.0.10.149'}
       gateway_ip: '10.0.10.1'
 
 
@@ -39,7 +39,7 @@
       ip_subnet: '172.23.3.0/24'
       allocation_pools:
       - {'start': '172.23.3.4', 'end': '172.23.3.250'}
-      gateway_ip: '172.23.3.254'a
+      gateway_ip: '172.23.3.254'
     storage_subnet:
       vlan: 1183
       ip_subnet: '172.23.1.0/24'
