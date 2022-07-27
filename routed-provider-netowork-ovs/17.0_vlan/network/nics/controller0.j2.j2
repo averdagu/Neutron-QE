@@ -1,3 +1,4 @@
+{% raw %}
 ---
 network_config:
 - type: interface
@@ -55,3 +56,4 @@ network_config:
     routes:
     - ip_netmask: 0.0.0.0/0
       next_hop: {{ external_gateway_ip }}
+{% endraw %}
