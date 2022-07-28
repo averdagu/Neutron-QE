@@ -1,5 +1,5 @@
 - name: Controller0
-  count: {{ (install.controller|default({})).nodes|default(0) or groups.controller|default([])|length or '1' }}
+  count: 3
   hostname_format: controller-%index%
   defaults:
     profile: control0
@@ -37,7 +37,7 @@
           /var=100%
 {% endif %}
 - name: Compute0
-  count: {{ (install.compute|default({})).nodes|default(0) or groups.compute|default([])|length or (install.hybrid is defined)| ternary('1','0') }}
+  count: 1
   hostname_format: computeleaf0-%index%
   defaults:
     profile: compute0
@@ -51,7 +51,7 @@
     - network: tenant
     - network: external
 - name: Compute1
-  count: {{ (install.compute|default({})).nodes|default(0) or groups.compute|default([])|length or (install.hybrid is defined)| ternary('1','0') }}
+  count: 2
   hostname_format: computeleaf1-%index%
   defaults:
     profile: compute1
@@ -65,7 +65,7 @@
     - network: tenant
     - network: external
 - name: Compute2
-  count: {{ (install.compute|default({})).nodes|default(0) or groups.compute|default([])|length or (install.hybrid is defined)| ternary('1','0') }}
+  count: 1
   hostname_format: computeleaf2-%index%
   defaults:
     profile: compute2
@@ -75,19 +75,6 @@
     - network: ctlplane
       vif: true
     - network: storage
-    - network: internal_api
-    - network: tenant
-    - network: external
-- name: Networker
-  count: 3
-  hostname_format: networker-%index%
-  defaults:
-    profile: networker
-    network_config:
-        template: /home/stack/17.0_vlan/network/nics/networker.j2
-    networks:
-    - network: ctlplane
-      vif: true
     - network: internal_api
     - network: tenant
     - network: external
