@@ -18,10 +18,15 @@
     - network: ctlplane
       vif: true
     - network: storage
+      subnet: storage_subnet
     - network: storage_mgmt
+      subnet: storage_mgmt_subnet
     - network: internal_api
+      subnet: internal_api_subnet
     - network: tenant
+      subnet: tenant_subnet
     - network: external
+      subnet: external_subnet
 {# Workaround the rhbz#2066367 for the case where OSP17 is run on top of RHEL9 #}
 {% if install.version|default(undercloud_version)|openstack_release >= 17 and (install.storage|default({})).backend == 'lvm' %}
   ansible_playbooks:
@@ -47,9 +52,13 @@
     - network: ctlplane
       vif: true
     - network: storage
+      subnet: storage_subnet
     - network: internal_api
+      subnet: internal_api_subnet
     - network: tenant
+      subnet: tenant_subnet
     - network: external
+      subnet: external_subnet
 - name: Compute1
   count: 2
   hostname_format: computeleaf1-%index%
@@ -61,9 +70,13 @@
     - network: ctlplane
       vif: true
     - network: storage
+      subnet: storage_leaf1
     - network: internal_api
+      subnet: internal_api_leaf1
     - network: tenant
+      subnet: tenant_leaf1
     - network: external
+      subnet: external_leaf1
 - name: Compute2
   count: 1
   hostname_format: computeleaf2-%index%
@@ -75,6 +88,10 @@
     - network: ctlplane
       vif: true
     - network: storage
+      subnet: storage_leaf2
     - network: internal_api
+      subnet: internal_api_leaf2
     - network: tenant
+      subnet: tenant_leaf2
     - network: external
+      subnet: external_leaf2
