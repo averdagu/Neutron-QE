@@ -21,10 +21,10 @@ def main(ips):
     for ip in ips:
         if netaddr.valid_ipv4(ip):
             ip_out_file = "/home/stack/ovn_migration/" + ip.replace('.', '_') + '_ipv4_ping.out'
-            run_cmds.append(sh.ping('-i', '1', '-D', ip, _out=ip_out_file, _bg=True))
+            run_cmds.append(sh.ping('-i', '1', ip, _out=ip_out_file, _bg=True))
         if netaddr.valid_ipv6(ip):
             ip_out_file = "/home/stack/ovn_migration/" + ip.replace(':', '_') + '_ipv6_ping.out'
-            run_cmds.append(sh.ping6('-i', '1', '-D', ip, _out=ip_out_file, _bg=True))
+            run_cmds.append(sh.ping6('-i', '1', ip, _out=ip_out_file, _bg=True))
 
     if not run_cmds:
         return
