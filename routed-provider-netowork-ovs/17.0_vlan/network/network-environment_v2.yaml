@@ -122,8 +122,6 @@ parameter_defaults:
     Compute2NetworkConfigTemplate: nics/compute2.j2
     ControllerNetworkConfigTemplate: nics/controller0.j2
 resource_registry:
-    OS::TripleO::Network::Ports::OVNDBsVipPort: /usr/share/openstack-tripleo-heat-templates/network/ports/noop.yaml
-    OS::TripleO::Network::Ports::RedisVipPort: /usr/share/openstack-tripleo-heat-templates/network/ports/noop.yaml
     OS::TripleO::Services::Docker: OS::Heat::None
     OS::TripleO::BlockStorage::Net::SoftwareConfig: OS::Heat::None
     OS::TripleO::CephStorage::Net::SoftwareConfig: OS::Heat::None
