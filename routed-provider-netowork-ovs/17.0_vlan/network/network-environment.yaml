@@ -54,7 +54,7 @@ parameter_defaults:
     - clock.redhat.com
     - clock2.redhat.com
     PythonInterpreter: /usr/bin/python3
-    RootStackName: central
+    RootStackName: overcloud
     SELinuxMode: permissive
     StorageAllocationPools:
     -   end: 172.23.1.250
