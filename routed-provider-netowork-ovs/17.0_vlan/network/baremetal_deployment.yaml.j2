@@ -1,6 +1,5 @@
 - name: Controller0
   count: 3
-  hostname_format: controller-%index%
   defaults:
     profile: control0
     config_drive:
@@ -43,7 +42,6 @@
 {% endif %}
 - name: Compute0
   count: 1
-  hostname_format: computeleaf0-%index%
   defaults:
     profile: compute0
     network_config:
@@ -61,7 +59,6 @@
       subnet: external_subnet
 - name: Compute1
   count: 2
-  hostname_format: computeleaf1-%index%
   defaults:
     profile: compute1
     network_config:
@@ -79,7 +76,6 @@
       subnet: external_leaf1
 - name: Compute2
   count: 1
-  hostname_format: computeleaf2-%index%
   defaults:
     profile: compute2
     network_config:
