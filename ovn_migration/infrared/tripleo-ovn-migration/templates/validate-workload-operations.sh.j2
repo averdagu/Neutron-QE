@@ -18,6 +18,7 @@ done < /tmp/nodes_data
 . {{ overcloudrc }}
 server_user_name={{ server_user_name }}
 ovn_migration_dir={{ ovn_migration_working_dir }}
+resources_type={{ resources_type  }}
 
 servers_with_trunks=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | grep trunk | awk '{print $1}')
 servers_no_trunks=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | grep -v trunk | awk '{print $1}')
@@ -64,20 +65,27 @@ validate_vms_connectivity(){
     fi
     echo SSH test succeeded
   done
-  for server_ipv6 in `comm -12 <(sort $ovn_migration_dir/server_ipv6_addresses) <(sort /tmp/ip_addresses)`; do
-    echo Pinging $server_ipv6
-    ping6 -c 3 $server_ipv6
-    [ $? -ne 0 ] && echo FAIL: Server ipv6 $server_ipv6 is not responding. && return 1
-    echo Ping6 test succeeded
-    echo Testing ssh to $server_ipv6
-    timeout 20 ssh -6 -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ipv6 date
-    if [ $? -ne 0 ]; then
-        echo "FAIL: VM address $server_ipv6 is not accessible via ssh."
-        return 1
+
+  if [ -s $ovn_migration_dir/server_ipv6_addresses ] ; then
+    for server_ipv6 in `comm -12 <(sort $ovn_migration_dir/server_ipv6_addresses) <(sort /tmp/ip_addresses)`; do
+      echo Pinging $server_ipv6
+      ping6 -c 3 $server_ipv6
+      [ $? -ne 0 ] && echo FAIL: Server ipv6 $server_ipv6 is not responding. && return 1
+      echo Ping6 test succeeded
+      echo Testing ssh to $server_ipv6
+      timeout 20 ssh -6 -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ipv6 date
+      if [ $? -ne 0 ]; then
+          echo "FAIL: VM address $server_ipv6 is not accessible via ssh."
+          return 1
+      fi
+      echo SSH test over IPv6 succeeded
+    done
+  else
+    if ! ([ "$resources_type" == "normal_ext" ] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext"  ]]); then
+      echo FAIL: File with server fips does not exist && return 1
     fi
-    echo SSH test over IPv6 succeeded
-  done
+  fi
   echo
 }
 
