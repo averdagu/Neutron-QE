@@ -30,21 +30,24 @@ normal_servers_for_migration=$(echo $servers_no_trunks | awk '{print $NF}')
 normal_servers_for_reboot=$(echo $servers_no_trunks | awk '{print $1}')
 
 validate_trunk_subports_connectivity(){
-    ! [ -s $ovn_migration_dir/trunk_vms_fips ] && return 1
-  echo Validating subports connectivity
-  openstack server show $server -c addresses -f value | sed 's/.*=\(.*\)/\1/' | tr -d " " | tr "," "\n" > /tmp/ip_addresses
+  if [ -s $ovn_migration_dir/trunk_vms_fips ]; then
+    echo Validating subports connectivity
+    openstack server show $server -c addresses -f value | sed 's/.*=\(.*\)/\1/' | tr -d " " | tr "," "\n" > /tmp/ip_addresses
 
-     for fip in `comm -12 <(sort $ovn_migration_dir/trunk_vms_fips) <(sort /tmp/ip_addresses)`; do
-        ips=$(timeout 10 ssh $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
-        for ip in $ips; do
-            timeout 10 ssh $server_user_name@$fip ping -c 3 $ip
-            if [ $? -ne 0 ]; then
-                echo "FAIL: Subport connectivity test failed."
-                return 1
-            fi
-        done
+    for fip in `comm -12 <(sort $ovn_migration_dir/trunk_vms_fips) <(sort /tmp/ip_addresses)`; do
+      ips=$(timeout 10 ssh $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
+      for ip in $ips; do
+        timeout 10 ssh $server_user_name@$fip ping -c 3 $ip
+        if [ $? -ne 0 ]; then
+          echo "FAIL: Subport connectivity test failed."
+          return 1
+        fi
+      done
     done
-    echo
+  else
+    [ "$resources_type" =~ "trunk" ] && echo FAIL: trunk_vms_fips file not found.  && return 1
+  fi
+  echo
 }
 
 validate_vms_connectivity(){
