@@ -86,7 +86,7 @@ validate_vms_connectivity(){
     done
   else
     if ! ([ "$resources_type" == "normal_ext" ] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext"  ]]); then
-      echo FAIL: File with server fips does not exist && return 1
+      echo FAIL: File with server ipv6 addresses does not exist && return 1
     fi
   fi
   echo

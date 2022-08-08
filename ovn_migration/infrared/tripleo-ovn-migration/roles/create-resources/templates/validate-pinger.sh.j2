@@ -41,16 +41,17 @@ if [ "$validations_type" == "ovn_migration_validations" ]; then
     done
     echo PASS: test_workload_vms_ipv4_downtime
 
-    echo TEST: test_workload_vms_ipv6_downtime
-    file_list=`ls {{ ovn_migration_temp_dir }}/*ipv6_ping.out`
-    [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
+    if ! ([ "$resources_type" == "normal_ext" ] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext" ]]); then
+        echo TEST: test_workload_vms_ipv6_downtime
+        file_list=`ls {{ ovn_migration_temp_dir }}/*ipv6_ping.out`
+        [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
 
-    for file in $file_list; do
-        check_if_pinger_stopped $file
-        validate $file
-    done
-    echo PASS: test_workload_vms_ipv6_downtime
-
+        for file in $file_list; do
+            check_if_pinger_stopped $file
+            validate $file
+        done
+        echo PASS: test_workload_vms_ipv6_downtime
+    fi
 
     if [[ "$resources_type" =~ "trunk" ]]; then
         echo TEST: test_trunk_subports_downtime
