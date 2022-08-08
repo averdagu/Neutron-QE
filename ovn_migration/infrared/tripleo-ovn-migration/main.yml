@@ -496,7 +496,9 @@
               shell: >
                   nohup {{ ovn_migration_working_dir }}/start-pinger.sh </dev/null >/dev/null 2>&1 &
               changed_when: False
-              when: not shutdown_workload|bool
+              when:
+                  - not shutdown_workload|bool
+                  - install.ensure_mtu_is_updated|bool
 
             - name: Start requester in background
               shell: >
@@ -505,6 +507,7 @@
               when:
                   - loadbalancer|bool
                   - not shutdown_workload|bool
+                  - install.ensure_mtu_is_updated|bool
 
             - name: Create network agents validation script
               template:
