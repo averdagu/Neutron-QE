@@ -1,12 +1,8 @@
 #!/bin/bash
-if [[ ! -f "/home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/roles_data.yaml" ]]; then
-  openstack overcloud roles generate -o /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/roles_data.yaml ControllerSriov ComputeSriov
-fi
-
 openstack -vvv overcloud deploy  \
 --templates \
 --timeout 120 \
--r /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/roles_data.yaml \
+-r /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/roles/roles_data.yaml \
 --deployed-server \
 -e /home/stack/templates/overcloud-vip-deployed.yaml \
 -e /home/stack/templates/overcloud-networks-deployed.yaml \
