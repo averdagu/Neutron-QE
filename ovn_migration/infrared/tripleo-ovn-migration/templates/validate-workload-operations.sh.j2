@@ -15,6 +15,8 @@ while read -r node ip; do
     node_ips[$node]=$ip
 done < /tmp/nodes_data
 
+[ "{{ osp_major_version }}" -ge "17" ] && key=id_extra_keys || key=id_rsa
+
 . {{ overcloudrc }}
 server_user_name={{ server_user_name }}
 ovn_migration_dir={{ ovn_migration_working_dir }}
@@ -35,9 +37,9 @@ validate_trunk_subports_connectivity(){
     openstack server show $server -c addresses -f value | sed 's/.*=\(.*\)/\1/' | tr -d " " | tr "," "\n" > /tmp/ip_addresses
 
     for fip in `comm -12 <(sort $ovn_migration_dir/trunk_vms_fips) <(sort /tmp/ip_addresses)`; do
-      ips=$(timeout 10 ssh $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
+      ips=$(timeout 10 ssh -i ~/.ssh/$key $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
       for ip in $ips; do
-        timeout 10 ssh $server_user_name@$fip ping -c 3 $ip
+        timeout 10 ssh -i ~/.ssh/$key $server_user_name@$fip ping -c 3 $ip
         if [ $? -ne 0 ]; then
           echo "FAIL: Subport connectivity test failed."
           return 1
@@ -60,7 +62,7 @@ validate_vms_connectivity(){
     [ $? -ne 0 ] && echo FAIL: Server ip $server_ip is not responding. && return 1
     echo Ping test succeeded
     echo Testing ssh to $server_ip
-    timeout 20 ssh -o StrictHostKeyChecking=no \
+    timeout 20 ssh -i ~/.ssh/$key -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
     if [ $? -ne 0 ]; then
         echo "FAIL: VM address $server_ip is not accessible via ssh."
@@ -76,7 +78,7 @@ validate_vms_connectivity(){
       [ $? -ne 0 ] && echo FAIL: Server ipv6 $server_ipv6 is not responding. && return 1
       echo Ping6 test succeeded
       echo Testing ssh to $server_ipv6
-      timeout 20 ssh -6 -o StrictHostKeyChecking=no \
+      timeout 20 ssh -6 -i ~/.ssh/$key -o StrictHostKeyChecking=no \
       -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ipv6 date
       if [ $? -ne 0 ]; then
           echo "FAIL: VM address $server_ipv6 is not accessible via ssh."
@@ -97,7 +99,7 @@ check_nic(){
   echo NIC short ID = $nic_id
   for node in $(cat /tmp/nodes_data | awk '{print $1}'); do
     echo node = $node
-    nics=$(timeout 10 ssh $SSH_USER@${node_ips[$node]} ip addr | grep -v '^\ ' | cut -d ' ' -f 2)
+    nics=$(timeout 10 ssh -i ~/.ssh/$key $SSH_USER@${node_ips[$node]} ip addr | grep -v '^\ ' | cut -d ' ' -f 2)
     [ "$nics" == "" ] && echo FAIL: Can not retrieve NICs from node $node && return 1
     for nic in $nics; do
         if [[ "$nic" =~ $nic_id ]]; then
@@ -116,7 +118,7 @@ check_iptables(){
   echo Short ID = $id
   for node in $(cat /tmp/nodes_data | awk '{print $1}'); do
     echo node = $node
-    timeout 10 ssh $SSH_USER@${node_ips[$node]}  sudo ip${ver}tables -S | grep -q $id
+    timeout 10 ssh -i ~/.ssh/$key $SSH_USER@${node_ips[$node]}  sudo ip${ver}tables -S | grep -q $id
     if [ $? -eq 0 ]; then
       echo "FAIL: There are stale ip${ver}tables rules related to id $id of vm $server on node $node"
       return 1
