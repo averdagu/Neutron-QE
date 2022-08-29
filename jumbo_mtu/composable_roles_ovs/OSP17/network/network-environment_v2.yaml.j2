@@ -33,7 +33,7 @@ parameter_defaults:
 # This should be only for OSP > 16, and ovn_emit_need_to_frag: True below
     OVNEmitNeedToFrag: True
     ExtraConfig:
-      neutron::plugins::ml2::path_mtu: 9000
+      neutron::plugins::ml2::path_mtu: 8550
       neutron::plugins::ml2::ovn::ovn_emit_need_to_frag: True
 parameter_merge_strategies:
     ExtraConfig: merge
