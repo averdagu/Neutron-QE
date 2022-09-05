@@ -87,6 +87,7 @@ subparsers:
                           Type of resources we want to create
                           normal: creates amount of VMs matching number of compute nodes
                           normal_ext: same as normal but creates VMs on external network
+                          normal_ext_int: combination of normal and normal_ext
                           dvr: same as normal but creates DVR router instead of HA
                           sriov_int_no_pf: as normal but creates also VMs with SR-IOV VF(direct) ports
                           sriov_int: as sriov_int_no_pf but creates also VMs with SR-IOV PF(direct-physical) ports
@@ -102,6 +103,7 @@ subparsers:
                       choices:
                         - normal
                         - normal_ext
+                        - normal_ext_int
                         - dvr
                         - sriov_int_vf
                         - sriov_int_no_pf
@@ -114,17 +116,17 @@ subparsers:
                         - trunk
                         - trunk_ext
                         - trunk_ext_with_normal_int
-                      default: trunk_ext_with_normal_int
+                      default: normal_ext_int
 
                   image_name:
                       type: Value
                       help: Image name to use
-                      default: tempest_image
+                      default: cirros
 
                   flavor_name:
                       type: Value
                       help: Flavor name to use for creating VMs.
-                      default: guest_image
+                      default: cirros
 
                   export_image:
                       type: Bool
@@ -134,7 +136,7 @@ subparsers:
                   server_user_name:
                       type: Value
                       help: User name to use for login to the resources VMs
-                      default: cloud-user
+                      default: cirros
 
                   create_loadbalancer:
                       type: Bool

@@ -5,6 +5,8 @@ set -x
 server_user_name={{ server_user_name }}
 ovn_migration_dir={{ ovn_migration_working_dir }}
 
+[ "{{ osp_major_version }}" -ge "17" ] && key=id_extra_keys || key=id_rsa
+
 # filtering with excluding ovn-migration-vlan network in order to get a single result. However the vlan network mtu is also reduced automatically and need to be checked, TODO.
 network=$(openstack network list --internal -c ID -c Name -f value | grep 'migration.*pinger' | grep -v vlan | awk '{print $1}')
 network_mtu=$(openstack network show $network -c mtu -f value)
@@ -19,7 +21,7 @@ check_server(){
     echo Ping IPv4 address succeeded
 
     echo Testing ssh to $server_ip
-    timeout 20 ssh -o StrictHostKeyChecking=no \
+    timeout 20 ssh -i ~/.ssh/$key -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
     if [ $? -ne 0 ]; then
         echo "VM address $server_ip is not accessible via ssh."
@@ -28,13 +30,13 @@ check_server(){
     echo SSH to IPv4 address succeeded
 
     echo Testing mtu via ssh to $server_ip
-    nic=$(timeout 20 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip ip r | grep default | sed 's/.*dev\ \(.*\)\ proto.*/\1/')
+    nic=$(timeout 20 ssh -i ~/.ssh/$key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip ip r | grep default | sed 's/.*dev\ \(.*\)\ proto.*/\1/')
     echo nic = $nic
     if [ $nic == "" ]; then
         echo "Can't get NIC name"
         exit 1
     fi
-    mtu=$(timeout 20 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip ip a | grep $nic | grep mtu | sed 's/.*mtu\ \(.*\)\ qdisc.*/\1/')
+    mtu=$(timeout 20 ssh -i ~/.ssh/$key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip ip a | grep $nic | grep mtu | sed 's/.*mtu\ \(.*\)\ qdisc.*/\1/')
     echo mtu = $mtu
     if [ $mtu == "" ]; then
         echo "Can't get MTU from VM"
@@ -55,7 +57,7 @@ check_server(){
     echo Ping IPv6 address succeeded
 
     echo Testing ssh to $server_ipv6
-    timeout 20 ssh -6 -o StrictHostKeyChecking=no \
+    timeout 20 ssh -6 -i ~/.ssh/$key -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ipv6 date
     if [ $? -ne 0 ]; then
         echo "VM address $server_ipv6 is not accessible via ssh."

@@ -4,7 +4,7 @@ set -x
 . {{ overcloudrc }}
 resources_type={{ resources_type }}
 echo TEST: test_network_is_geneve
-if ( [[ "$resources_type" =~ "sriov" ]] || [[ "$resources_type" =~ "ext" ]] ) && ! [ "$resources_type" == "trunk_ext_with_normal_int" ]; then
+if ( [[ "$resources_type" =~ "sriov" ]] || [[ "$resources_type" =~ "ext" ]] ) && ! [ "$resources_type" == "trunk_ext_with_normal_int" ] && ! [ "$resources_type" == "normal_ext_int" ]; then
     echo "SKIPPED: This workload type does not create a network that migrates to geneve. Skipping the check."
     exit
 fi
