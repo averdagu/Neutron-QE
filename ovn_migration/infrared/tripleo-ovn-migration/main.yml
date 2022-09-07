@@ -404,13 +404,13 @@
               file:
                   state: absent
                   path: /tmp/neutron
-              when: install.inject_refspec_for_revert != ''
+              when: install.revert_to_ovs|bool
 
             - name : Create temp directory for neutron if not present
               file:
                   state: directory
                   path: /tmp/neutron
-              when: install.inject_refspec_for_revert != ''
+              when: install.revert_to_ovs|bool
 
             - name: Clone upstream neutron repo to a temp directory
               git:
@@ -418,13 +418,11 @@
                   dest: /tmp/neutron
                   clone: yes
                   update: yes
-              when: install.inject_refspec_for_revert != ''
+              when: install.revert_to_ovs|bool
 
             - name: Install playbooks for OVN migration revert
               shell: |
                   cd /tmp/neutron
-                  git reset --hard dda8c70fbe3948de45bf72c5f9be7c657ebe42a9
-                  git fetch https://review.opendev.org/openstack/neutron refs/changes/{{ install.inject_refspec_for_revert }} && git cherry-pick FETCH_HEAD
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/recovery-backup/ {{ ovn_migration_working_dir }}/playbooks/roles
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/revert/ {{ ovn_migration_working_dir }}/playbooks/roles
                   cp -rf tools/ovn_migration/tripleo_environment/playbooks/ovn-migration.yml {{ ovn_migration_working_dir }}/playbooks
@@ -439,7 +437,7 @@
                   sudo mv /home/stack/ovn_migration.sh /usr/bin/
                   sudo chmod +x /usr/bin/ovn_migration.sh
                   sed -i '/Pre\ migration\ checks/,+6 d' {{ ovn_migration_working_dir }}/playbooks/ovn-migration.yml
-              when: install.inject_refspec_for_revert != ''
+              when: install.revert_to_ovs|bool
 
             - name: Set the public network name (infrared deployment)
               set_fact:

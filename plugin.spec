@@ -298,8 +298,3 @@ subparsers:
                       type: Value
                       help: A host where to save backup.
                       default: 192.168.24.1
-
-                  inject_refspec_for_revert:
-                      type: Value
-                      help: Temporary workaround. Refspec (e.g. 38/835638/11) from a WIP patch for backup and restore https://review.opendev.org/c/openstack/neutron/+/835638
-                      default: ''
