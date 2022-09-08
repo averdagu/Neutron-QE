@@ -14,6 +14,7 @@
             image_to_boot: "{{ install.image_name }}"
             flavor_to_use: "{{ install.flavor_name }}"
             server_user_name: "{{ install.server_user_name }}"
+            resources_type: "{{ install.resources_type }}"
             packet_loss_threshold: "{{ install.allowed_packet_loss }}"
             validate_agents: "{{ install.validate_agents }}"
             validate_nodes: "{{ install.validate_nodes }}"
@@ -36,6 +37,7 @@
             image_to_boot: "{{ image_name }}"
             flavor_to_use: "{{ flavor_name }}"
             server_user_name: "{{ server_user_name }}"
+            resources_type: "{{ resources_type }}"
             packet_loss_threshold: "{{ allowed_packet_loss }}"
             validate_agents: "{{ validate_agents }}"
             validate_nodes: "{{ validate_nodes }}"
@@ -324,7 +326,6 @@
             - name: Set facts for resources creation (infrared deployment)
               set_fact:
                   public_net: "{{ install.external_network }}"
-                  resources_type: "{{ install.resources_type }}"
                   fix_mtu: "{{ install.fix_workload_mtu }}"
                   loadbalancer: "{{ install.create_loadbalancer }}"
                   shutdown_workload: "{{ install.shutdown_workload }}"
@@ -333,7 +334,6 @@
             - name: Set facts for resources creation (Tripleo deployment)
               set_fact:
                   public_net: "{{ external_network }}"
-                  resources_type: "{{ resources_type }}"
                   fix_mtu: "{{ fix_workload_mtu }}"
                   loadbalancer: "{{ create_loadbalancer }}"
                   shutdown_workload: "{{ shutdown_workload }}"
