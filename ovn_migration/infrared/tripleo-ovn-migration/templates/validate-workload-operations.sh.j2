@@ -15,8 +15,6 @@ while read -r node ip; do
     node_ips[$node]=$ip
 done < /tmp/nodes_data
 
-[ "{{ osp_major_version }}" -ge "17" ] && key=id_extra_keys || key=id_rsa
-
 . {{ overcloudrc }}
 server_user_name={{ server_user_name }}
 ovn_migration_dir={{ ovn_migration_working_dir }}
@@ -30,6 +28,8 @@ trunk_servers_for_reboot=$(echo $servers_with_trunks | awk '{print $NF}')
 # We use here opposite order in order to increase the chances to migrate VMs from different compute nodes
 normal_servers_for_migration=$(echo $servers_no_trunks | awk '{print $NF}')
 normal_servers_for_reboot=$(echo $servers_no_trunks | awk '{print $1}')
+
+[ "{{ osp_major_version }}" -ge "17" ] && key=id_extra_keys || key=id_rsa
 
 validate_trunk_subports_connectivity(){
   if [ -s $ovn_migration_dir/trunk_vms_fips ]; then
