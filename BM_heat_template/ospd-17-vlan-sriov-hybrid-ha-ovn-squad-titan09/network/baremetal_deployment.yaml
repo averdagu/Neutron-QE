@@ -29,6 +29,7 @@
           /home=1GB
           /srv=10GB
           /var=100%
+    - playbook: /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/playbooks/sssd_selinux_workaround.yaml
 
 - name: ComputeSriov
   count: 2
