@@ -1,4 +1,12 @@
 #!/bin/bash
+
+containers_prepare_param="/home/stack/containers-prepare-parameter.yaml"
+if [ -f "/home/stack/containers-prepare-parameter-copy.yaml" ]
+then
+    echo "this job has been executed with extra repos configured"
+    containers_prepare_param="/home/stack/containers-prepare-parameter-copy.yaml"
+fi
+
 openstack -vvv overcloud deploy  \
 --templates \
 --timeout 120 \
@@ -10,7 +18,7 @@ openstack -vvv overcloud deploy  \
 --networks-file /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/network/network_data_v2.yaml \
 -e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-ha.yaml \
 -e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-sriov.yaml \
--e /home/stack/containers-prepare-parameter.yaml \
+-e $containers_prepare_param \
 -e /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/api-policies.yaml \
 -e /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/network-environment.yaml \
 -e /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/nova-resize-on-the-same-host.yaml \
