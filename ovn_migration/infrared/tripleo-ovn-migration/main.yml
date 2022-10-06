@@ -243,6 +243,12 @@
             path: "{{ validations_dir }}"
         when: migrate|bool
 
+      - name : Create dumps directory if not present
+        file:
+            state: directory
+            path: "{{ ovn_migration_working_dir }}/dumps"
+        when: migrate|bool
+
       - name: Set necessary facts (infrared deployment)
         set_fact:
             is_dvr: "{{ install.dvr }}"
@@ -455,6 +461,18 @@
                   dest: "{{ ovn_migration_working_dir }}/start-ovn-migration.sh"
                   mode: 0755
 
+            - name: Generate dumping objects script
+              template:
+                  src: templates/dump-objects.sh.j2
+                  dest: "{{ ovn_migration_working_dir }}/dump-objects.sh"
+                  mode: 0755
+
+            - name: Run dumping objects script to save initial state
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/dump-objects.sh initial_state full
+                  > {{ ovn_migration_working_dir }}/dumps/dump-objects_initial_state.sh.log 2>&1
+
             - name: Generate inventory file for ovn migration
               shell:
                   set -o pipefail &&
@@ -521,11 +539,24 @@
                   > {{ validations_dir }}/validate-network-agents_ovs_before_migration.sh.log 2>&1
               when:  validate_agents|bool
 
+            - name: Run dumping objects script before ovn migration
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/dump-objects.sh before_ovn_migration
+                  > {{ ovn_migration_working_dir }}/dumps/dump-objects_before_ovn-migration.sh.log 2>&1
+
             - name: Start the migration process
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/start-ovn-migration.sh start-migration
                   > {{ ovn_migration_working_dir }}/start-ovn-migration.sh.log 2>&1
+
+            - name: Run dumping objects script after migration to ovn
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/dump-objects.sh after_ovn_migration
+                  > {{ ovn_migration_working_dir }}/dumps/dump-objects_after_ovn-migration.sh.log 2>&1
+
         when: migrate|bool
 
 - name: Execute ReaR to restore all controllers
@@ -538,11 +569,19 @@
 - name: Revert OVN to OVS
   hosts: undercloud
   tasks:
-      - name: Revert to OVS
-        include_role:
-            name: revert
-        when:
-            - install.revert_to_ovs|bool
+      - name: Starting migration block
+        block:
+            - name: Revert to OVS
+              include_role:
+                  name: revert
+
+            - name: Run dumping objects script after restoring ovs
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/dump-objects.sh after_ovs_restore full
+                  > {{ ovn_migration_working_dir }}/dumps/dump-objects_after_restoring_ovs.sh.log 2>&1
+
+        when: install.revert_to_ovs|bool
 
 - name: Stop DHCP server on external network for post-revert tempest testing
   hosts: hypervisor

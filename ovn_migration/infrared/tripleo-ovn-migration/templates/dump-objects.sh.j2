@@ -1,0 +1,67 @@
+#!/bin/bash
+set -x
+
+server_user_name={{ server_user_name }}
+ovn_migration_dir={{ ovn_migration_working_dir }}
+
+out_dir=$ovn_migration_dir/dumps/$1
+mkdir -p $out_dir
+
+. {{ overcloudrc }}
+
+dump_objects(){
+  object=${@:1}
+  echo Getting $object list
+  ids=$(openstack $object list -c ID -f value)
+  obj_path=$(echo $out_dir/${object}s | tr " " "_")
+  mkdir $obj_path
+  for id in $ids; do
+    echo Dumping $object with id=$id
+    openstack $object show $id -f json > $obj_path/$id
+  done
+}
+
+dump_objects network
+dump_objects subnet
+dump_objects port
+dump_objects network trunk
+dump_objects router
+dump_objects floating ip
+dump_objects security group
+dump_objects server
+
+if [ $2 == "full" ]; then
+  dump_objects image
+  dump_objects flavor
+fi
+
+SSH_USER={{ overcloud_ssh_user }}
+
+. /home/stack/stackrc
+
+declare -A node_ips
+if [ "{{ osp_major_version }}" -le "16" ]; then
+  openstack server list -c Name -c Networks -f value | sed 's/ctlplane=//' > /tmp/nodes_data
+else
+  metalsmith list | grep ctlplane | awk '{print $(NF-5),$(NF-1)}' | sed 's/ctlplane=//' > /tmp/nodes_data
+fi
+
+[ "{{ osp_major_version }}" -ge "17" ] && key=id_extra_keys || key=id_rsa
+
+for server_ip in $(cat $ovn_migration_dir/server_fips); do
+  [ ! -e $out_dir/$server_ip ] && mkdir -p $out_dir/$server_ip
+  timeout 10 ssh -i ~/.ssh/$key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+    $server_user_name@$server_ip 'PATH=$PATH:/sbin ip addr' > $out_dir/$server_ip/ip_address_show
+done
+
+while read -r node ip; do
+  echo Node = $node
+  [ ! -e $out_dir/$node ] && mkdir -p $out_dir/$node
+  timeout 10 ssh -n -i ~/.ssh/$key $SSH_USER@$ip sudo iptables -L  > $out_dir/$node/iptables_list
+  timeout 10 ssh -n -i ~/.ssh/$key $SSH_USER@$ip sudo ovs-vsctl show > $out_dir/$node/ovs_vsctl_show
+  timeout 10 ssh -n -i ~/.ssh/$key $SSH_USER@$ip ip addr > $out_dir/$node/ip_address_show
+  namespaces=$(timeout 10 ssh -n -i ~/.ssh/$key $SSH_USER@$ip ip net | awk '{print $1}')
+  for ns in $namespaces; do
+    timeout 10 ssh -n -i ~/.ssh/$key $SSH_USER@$ip sudo ip net ex $ns ip addr > $out_dir/$node/${ns}_ip_address_show
+  done
+done < /tmp/nodes_data
