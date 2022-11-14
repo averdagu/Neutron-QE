@@ -9,7 +9,7 @@
     dest: "{{ ovn_migration_temp_dir }}/create-resources.sh"
     mode: 0744
 
-- name: Creating pre pre migration resources
+- name: Creating pre migration resources
   shell: >
     set -o pipefail &&
     {{ ovn_migration_temp_dir }}/create-resources.sh >

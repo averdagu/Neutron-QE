@@ -285,58 +285,58 @@
               when:
                 - install is not defined
 
+      - name: Set facts for resources creation (infrared deployment)
+        set_fact:
+            public_net: "{{ install.external_network }}"
+            fix_mtu: "{{ install.fix_workload_mtu }}"
+            loadbalancer: "{{ install.create_loadbalancer }}"
+            shutdown_workload: "{{ install.shutdown_workload }}"
+        when: install is defined
+
+      - name: Set facts for resources creation (Tripleo deployment)
+        set_fact:
+            public_net: "{{ external_network }}"
+            fix_mtu: "{{ fix_workload_mtu }}"
+            loadbalancer: "{{ create_loadbalancer }}"
+            shutdown_workload: "{{ shutdown_workload }}"
+        when: install is not defined
+
       - name: Create few resources
         block:
-            - name: Set facts for resources creation (infrared deployment)
-              set_fact:
-                  public_net: "{{ install.external_network }}"
-                  fix_mtu: "{{ install.fix_workload_mtu }}"
-                  loadbalancer: "{{ install.create_loadbalancer }}"
-                  shutdown_workload: "{{ install.shutdown_workload }}"
-              when: install is defined
+          - name: Fail if resources_type is dvr while environment is SR-IOV
+            fail:
+                msg: "SR-IOV does not support dvr resources"
+            when:
+                - resources_type == 'dvr' and is_sriov|bool
 
-            - name: Set facts for resources creation (Tripleo deployment)
-              set_fact:
-                  public_net: "{{ external_network }}"
-                  fix_mtu: "{{ fix_workload_mtu }}"
-                  loadbalancer: "{{ create_loadbalancer }}"
-                  shutdown_workload: "{{ shutdown_workload }}"
-              when: install is not defined
+          - name: Fail if resources_type is dvr while target environment is not DVR
+            fail:
+                msg: "DVR resources can be run only on DVR environment"
+            when:
+                - resources_type == 'dvr' and not is_dvr|bool
 
-            - name: Fail if resources_type is dvr while environment is SR-IOV
-              fail:
-                  msg: "SR-IOV does not support dvr resources"
-              when:
-                  - resources_type == 'dvr' and is_sriov|bool
+          - name: Fail if resources_type is sriov* while environment is not SR-IOV
+            fail:
+                msg: "This resource type can be used only with SR-IOV"
+            when:
+                - resources_type is regex("sriov.*") and not is_sriov|bool
 
-            - name: Fail if resources_type is dvr while target environment is not DVR
-              fail:
-                  msg: "DVR resources can be run only on DVR environment"
-              when:
-                  - resources_type == 'dvr' and not is_dvr|bool
+          - name: Create resources
+            include_role:
+                name: create-resources
+            vars:
+                public_network_name: "{{ public_net }}"
+                image_name: "{{ image_to_boot }}"
+                flavor_name: "{{ flavor_to_use }}"
+                ovn_migration_temp_dir: /home/stack/ovn_migration
+                dvr: is_dvr|bool
+                sriov: is_sriov|bool
 
-            - name: Fail if resources_type is sriov* while environment is not SR-IOV
-              fail:
-                  msg: "This resource type can be used only with SR-IOV"
-              when:
-                  - resources_type is regex("sriov.*") and not is_sriov|bool
-
-            - name: Create resources
-              include_role:
-                  name: create-resources
-              vars:
-                  public_network_name: "{{ public_net }}"
-                  image_name: "{{ image_to_boot }}"
-                  flavor_name: "{{ flavor_to_use }}"
-                  ovn_migration_temp_dir: /home/stack/ovn_migration
-                  dvr: is_dvr|bool
-                  sriov: is_sriov|bool
-
-            - name: Stop existing VMs
-              shell: |
-                  source {{ overcloudrc }}
-                  openstack server list --all -c ID -f value | xargs -n1 openstack server stop || true
-              when: shutdown_workload|bool
+          - name: Stop existing VMs
+            shell: |
+                source {{ overcloudrc }}
+                openstack server list --all -c ID -f value | xargs -n1 openstack server stop || true
+            when: shutdown_workload|bool
 
         when: create_vms|bool
 
