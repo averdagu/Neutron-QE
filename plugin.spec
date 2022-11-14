@@ -237,49 +237,14 @@ subparsers:
                       help: Temporary workaround. Whether to change flavor disk size to 10 in neutron OVN migration playbooks.
                       default: False
 
-                  fix_trunks_cleanup:
-                      type: Bool
-                      help: Temporary workaround. Whether to ignore errors during trunks cleanup in case there are no trunks.
-                      default: False
-
                   print_vm_console_on_fail:
                       type: Bool
                       help: Temporary workaround. Whether to inject to ovn migration playbooks an option to print workload VM console in case of failure
                       default: True
 
-                  fix_ansible_inventory:
-                      type: Bool
-                      help: Temporary workaround. Whether to apply a fix from https://review.opendev.org/c/openstack/neutron/+/834925/
-                      default: False
-
-                  fix_systemctl_daemon:
-                      type: Bool
-                      help: Temporary workaround. Whether to apply a fix from https://review.opendev.org/c/openstack/neutron/+/831511/
-                      default: False
-
-                  fix_tmp_dir_exec:
-                      type: Bool
-                      help: Temporary workaround. Whether to apply fix from https://code.engineering.redhat.com/gerrit/c/networking-ovn/+/401893/
-                      default: False
-
                   disable_pre_checks:
                       type: Bool
                       help: Temporary workaround. Whether to disable pre-migration checks.
-                      default: False
-
-                  apply_patch_for_sg_fg_cleanup:
-                      type: Bool
-                      help: Temporary workaround. Whether to apply fix from https://review.opendev.org/c/openstack/neutron/+/832675
-                      default: False
-
-                  fix_dhcp_agents_cleanup:
-                      type: Bool
-                      help: Temporary workaround. Whether to apply fix from https://review.opendev.org/c/openstack/neutron/+/839392
-                      default: False
-
-                  fix_exitcommand:
-                      type: Bool
-                      help: Temporary workaround. Whether to apply fix for RHBZ 2079244
                       default: False
 
             - title: Revert migration

@@ -145,57 +145,15 @@
                   sed -i 's/\(\-\-disk\ 1\)\ /\10/g' {{ workload_script }}
               when: install.patch_flavor_size|bool
 
-            - name: Apply workaround for trunks cleanup
-              shell: |
-                  sed -i '/Cleanup neutron trunk/a \ \ ignore_errors:\ True' {{ playbooks_path }}/roles/migration/tasks/cleanup-dataplane.yml
-              when: install.fix_trunks_cleanup|bool
-
             - name: Inject code to print workload VM console
               shell: |
                   sed -i "/exit\ 1/i server_id=\$(openstack server list -f value | grep \$server_ip | awk '{print \$1}')\nopenstack console log show \$server_id" {{ playbooks_path }}/roles/resources/create/templates/create-resources.sh.j2
               when: install.print_vm_console_on_fail|bool
 
-            - name: Apply fix for ansible inventory
-              shell: |
-                  curl -Lo /home/stack/ovn_migration.sh http://file.tlv.redhat.com/~rsafrono/files/ovn_migration.sh
-                  mv /usr/bin/ovn_migration.sh /usr/bin/ovn_migration.sh.bak
-                  mv /home/stack/ovn_migration.sh /usr/bin/
-                  chmod +x /usr/bin/ovn_migration.sh
-              when: install.fix_ansible_inventory|bool
-
-            - name: Apply fix for systemctl daemon after removal
-              shell: |
-                  sed -i "/remove\ containers/i -\ name:\ Reload\ systemctl\ daemons\n\ \ systemd:\n\ \ \ \ daemon_reload:\ yes\n" {{ playbooks_path }}/roles/stop-agents/tasks/main.yml
-              when: install.fix_systemctl_daemon
-
-            - name: Apply fix for tmp dir executable
-              shell: |
-                  sed -i 's/0744/0644/' {{ playbooks_path }}/roles/migration/tasks/activate-ovn.yml
-                  sed -i 's/\(.*log\)/\ \ \ \ sh\ \1/' {{ playbooks_path }}/roles/migration/tasks/activate-ovn.yml
-                  sed -i 's/0744/0644/' {{ playbooks_path }}/roles/migration/tasks/clone-dataplane.yml
-                  sed -i 's/\(shell:\)\(.*\)/\1\ sh\ \2/' {{ playbooks_path }}/roles/migration/tasks/clone-dataplane.yml
-              when: install.fix_tmp_dir_exec|bool
-
             - name: Disable pre-checks
               shell: |
                   sed -i '/Pre\ migration\ checks/,+6 d' {{ playbooks_path }}/ovn-migration.yml
               when: install.disable_pre_checks
-
-            - name: Apply patch for sg- fg- interfaces cleanup
-              shell: |
-                  sed -i 's/rfp-/rfp-|sg-|fg-/' {{ playbooks_path }}/roles/migration/tasks/cleanup-dataplane.yml
-                  sed -i 's/rfp-/rfp-|sg-|fg-/' {{ playbooks_path }}/roles/migration/templates/clone-br-int.sh.j2
-              when: install.apply_patch_for_sg_fg_cleanup|bool
-
-            - name: Fix dhcp agents cleanup
-              shell: |
-                  awk -i inplace '{print} /become/ && !n {print "  when:\n    - ansible_facts.services[item] is defined\n    - ansible_facts.services[item][\"state\"] == \"running\""; n++}' {{ playbooks_path }}/roles/stop-agents/tasks/cleanup.yml
-              when: install.fix_dhcp_agents_cleanup|bool
-
-            - name: Fix exitcommand
-              shell: |
-                  sed -i "s/\['exitcommand'\]/.get('exitcommand', [])/" /usr/share/ansible/collections/ansible_collections/containers/podman/plugins/module_utils/podman/podman_container_lib.py
-              when: install.fix_exitcommand|bool
 
             - name: Decrease user input timeout for backup and restore
               shell: |
