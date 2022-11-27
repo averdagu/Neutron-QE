@@ -58,6 +58,7 @@ while read -r node ip; do
   echo Node = $node
   [ ! -e $out_dir/$node ] && mkdir -p $out_dir/$node
   timeout 10 ssh -n -i ~/.ssh/$key $SSH_USER@$ip sudo iptables -L  > $out_dir/$node/iptables_list
+  timeout 10 ssh -n -i ~/.ssh/$key $SSH_USER@$ip sudo ip6tables -L  > $out_dir/$node/ip6tables_list
   timeout 10 ssh -n -i ~/.ssh/$key $SSH_USER@$ip sudo ovs-vsctl show > $out_dir/$node/ovs_vsctl_show
   timeout 10 ssh -n -i ~/.ssh/$key $SSH_USER@$ip ip addr > $out_dir/$node/ip_address_show
   namespaces=$(timeout 10 ssh -n -i ~/.ssh/$key $SSH_USER@$ip ip net | awk '{print $1}')
