@@ -575,7 +575,7 @@ if [[ "$resources_type" =~ "trunk" ]]; then
                     exit 1
                 fi
                 # If short ping worked we start an infinite ping
-                ssh -i ~/.ssh/$key $server_user_name@${TRUNK_VMS_FIPS[$i]}  "ping ${SUBPORT_IPS[$s]} > ping_${SUBPORT_IPS[$s]}_output 2>&1 &"
+                ssh -i ~/.ssh/$key $server_user_name@${TRUNK_VMS_FIPS[$i]}  "ping -D ${SUBPORT_IPS[$s]} > ping_${SUBPORT_IPS[$s]}_output 2>&1 &"
             fi
         done
     done
