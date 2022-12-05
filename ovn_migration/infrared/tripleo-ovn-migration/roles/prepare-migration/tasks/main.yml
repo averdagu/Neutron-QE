@@ -44,20 +44,26 @@
   set_fact:
       overcloud_deploy_ovn_script: '~/overcloud-deploy-ovn.sh'
 
-- name: Remove ml2ovs-specific environment files from overcloud deploy ovn script
+- name: Replace ovs templates to corresponding ovn ones
+  replace:
+    path: "{{ overcloud_deploy_ovn_script }}"
+    regexp: "{{ item.ovs }}"
+    replace: "{{ item.ovn }}"
+  loop:
+    - {ovs: "neutron-ovs-dpdk.yaml", ovn: "neutron-ovn-dpdk.yaml"}
+    - {ovs: "neutron-sriov.yaml", ovn: "neutron-ovn-sriov.yaml"}
+    - {ovs: "neutron-ovs.yaml", ovn: "neutron-ovn-ha.yaml"}
+    - {ovs: "environments/neutron-ovs-dvr.yaml", ovn: "environments/services/neutron-ovn-dvr-ha.yaml"}
+    - {ovs: "neutron-ovs-dvr.yaml", ovn: "neutron-ovn-dvr-ha.yaml"}
+
+- name: Remove remaining ml2ovs-specific environment files from overcloud deploy ovn script
   lineinfile:
       dest: "{{ overcloud_deploy_ovn_script }}"
       state: absent
       regexp: "{{ item }}"
   with_items:
       - "^.*openstack-tripleo-heat-templates.*ovs.*yaml"
-      - ".*neutron-sriov.yaml.*"
   when: infrared_deployment|bool
-
-- name: Get the proper neutron-ovn-ha.yaml path
-  stat:
-      path: /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-ha.yaml
-  register: ovn_env_path
 
 - name: Set the neutron-ovn-dvr-ha.yaml file path if dvr
   set_fact:
