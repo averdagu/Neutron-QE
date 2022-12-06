@@ -44,7 +44,7 @@
   set_fact:
       overcloud_deploy_ovn_script: '~/overcloud-deploy-ovn.sh'
 
-- name: Replace ovs templates to corresponding ovn ones
+- name: Replace nfv-related ovs templates with corresponding ovn ones
   replace:
     path: "{{ overcloud_deploy_ovn_script }}"
     regexp: "{{ item.ovs }}"
@@ -52,9 +52,6 @@
   loop:
     - {ovs: "neutron-ovs-dpdk.yaml", ovn: "neutron-ovn-dpdk.yaml"}
     - {ovs: "neutron-sriov.yaml", ovn: "neutron-ovn-sriov.yaml"}
-    - {ovs: "neutron-ovs.yaml", ovn: "neutron-ovn-ha.yaml"}
-    - {ovs: "environments/neutron-ovs-dvr.yaml", ovn: "environments/services/neutron-ovn-dvr-ha.yaml"}
-    - {ovs: "neutron-ovs-dvr.yaml", ovn: "neutron-ovn-dvr-ha.yaml"}
 
 - name: Remove remaining ml2ovs-specific environment files from overcloud deploy ovn script
   lineinfile:
