@@ -29,7 +29,9 @@
           /home=1GB
           /srv=10GB
           /var=100%
+{% if install.update_repo is defined and install.update_repo|length %}
     - playbook: /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovn-squad-titan09/playbooks/sssd_selinux_workaround.yaml
+{% endif %}
 
 - name: ComputeSriov
   count: 2

@@ -29,6 +29,9 @@
           /home=1GB
           /srv=10GB
           /var=100%
+{% if install.update_repo is defined and install.update_repo|length %}
+    - playbook: /home/stack/OSP17/playbooks/sssd_selinux_workaround.yaml
+{% endif %}
 
 - name: Networker
   count: 3
@@ -59,6 +62,9 @@
           /home=1GB
           /srv=10GB
           /var=100%
+{% if install.update_repo is defined and install.update_repo|length %}
+    - playbook: /home/stack/OSP17/playbooks/sssd_selinux_workaround.yaml
+{% endif %}
 
 - name: Compute
   count: 2
