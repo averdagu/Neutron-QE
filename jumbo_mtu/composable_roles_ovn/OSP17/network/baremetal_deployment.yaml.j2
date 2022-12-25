@@ -31,7 +31,7 @@
           /var/log=3GB
           /var/log/audit=1GB
           /home=1GB
-          /srv=10GB
+          /srv={{ (install.srv.volume.size|default(10)) }}GB
           /var=100%
 {% if install.update_repo is defined and install.update_repo|length %}
     - playbook: /home/stack/OSP17/playbooks/sssd_selinux_workaround.yaml
