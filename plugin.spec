@@ -250,7 +250,7 @@ subparsers:
                   fix_poolmetadatasize:
                       type: Bool
                       help: Temporary workaround. Whether to inject a code that fixes node recovery issue caused by BZ2149586.
-                      default: False
+                      default: True
 
             - title: Revert migration
               options:
