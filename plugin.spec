@@ -247,6 +247,11 @@ subparsers:
                       help: Temporary workaround. Whether to disable pre-migration checks.
                       default: False
 
+                  fix_poolmetadatasize:
+                      type: Bool
+                      help: Temporary workaround. Whether to inject a code that fixes node recovery issue caused by BZ2149586.
+                      default: False
+
             - title: Revert migration
               options:
                   revert_to_ovs:

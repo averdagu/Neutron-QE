@@ -168,6 +168,14 @@
               shell: |
                   sed  -i "s/.*desync_output.stderr.*/  until: desync_output.stderr == \"\" or '\"WARN\" in desync_output.stderr'/" /usr/share/ansible/roles/backup_and_restore/tasks/db_backup.yml
               when: osp_major_version | int >= 17
+
+            - name: Temporary workaround for backup issue caused by bz2149586
+              shell: |
+                  sed -i "/Take this node out of pacemaker/i - name: Inject poolmetadatasize fix\n  shell: |\n      sed -i 's/\\\(--type\ thin-pool\\\)/--poolmetadatasize 8M \\\1/' /usr/share/rear/layout/prepare/GNU/Linux/110_include_lvm_code.sh\n  tags:\n    - bar_create_recover_image\n" {{ backup_and_restore_path }}/tasks/run_backup.yml
+              when:
+                  - osp_major_version | int >= 17
+                  - install.create_backup|bool
+                  - install.fix_poolmetadatasize|bool
         when: migrate|bool
 
 - name: Prepare for migration
