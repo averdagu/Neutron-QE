@@ -80,7 +80,7 @@
   lineinfile:
       dest: "{{ overcloud_deploy_ovn_script }}"
       line: "{{ item }} \\"
-      insertbefore: "^--log-file.*"
+      insertbefore: "^.*--log-file.*"
   with_items:
       - "-e {{ neutron_ovn_env_path }}"
       - "-e {{ ovn_extra_configs }}"
@@ -108,7 +108,7 @@
   lineinfile:
       dest: "{{ overcloud_deploy_ovn_script }}"
       line: "{{ item }} \\"
-      insertbefore: "^--log-file.*"
+      insertbefore: "^.*--log-file.*"
   with_items:
       - "-e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-ha.yaml"
       - "-e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-sriov.yaml"
