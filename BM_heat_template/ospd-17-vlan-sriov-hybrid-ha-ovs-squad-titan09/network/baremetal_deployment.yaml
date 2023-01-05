@@ -1,4 +1,4 @@
-- name: ControllerSriov
+- name: Controller
   count: 3
   hostname_format: controller-%index%
   defaults:
