@@ -269,6 +269,11 @@ subparsers:
                       help: A host where to save backup.
                       default: 192.168.24.1
 
+                  fix_subnet_for_backup:
+                      type: Bool
+                      help: Temporary workaround. Inject parameter to override default subnets, see https://bugzilla.redhat.com/show_bug.cgi?id=2158437
+                      default: False
+
                   inject_code_for_revert:
                       type: Bool
                       help: Temporary workaround. Inject code from patch for backup and restore https://review.opendev.org/c/openstack/neutron/+/835638
