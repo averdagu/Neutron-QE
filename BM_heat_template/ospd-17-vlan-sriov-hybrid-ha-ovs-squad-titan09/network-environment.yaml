@@ -17,7 +17,7 @@ parameter_defaults:
   NeutronFirewallDriver: openvswitch
   NeutronMechanismDrivers: ['sriovnicswitch', 'openvswitch']
 
-  ControllerSriovSchedulerHints:
+  ControllerSchedulerHints:
     'capabilities:node': 'controller-%index%'
   ComputeSriovSchedulerHints:
     'capabilities:node': 'compute-%index%'
@@ -55,7 +55,7 @@ parameter_defaults:
     neutron::agents::ml2::sriov::resource_provider_hypervisors: "enp7s0f3:%{hiera('fqdn_canonical')},enp5s0f0:%{hiera('fqdn_canonical')}"
 
   ComputeSriovNetworkConfigTemplate: "/home/stack/ospd-17-vlan-sriov-hybrid-ha-ovs-squad-titan09/nic-configs/compute.yaml"
-  ControllerSriovNetworkConfigTemplate: "/home/stack/ospd-17-vlan-sriov-hybrid-ha-ovs-squad-titan09/nic-configs/controller.yaml"
+  ControllerNetworkConfigTemplate: "/home/stack/ospd-17-vlan-sriov-hybrid-ha-ovs-squad-titan09/nic-configs/controller.yaml"
 
 parameter_merge_strategies:
   ExtraConfig: merge
