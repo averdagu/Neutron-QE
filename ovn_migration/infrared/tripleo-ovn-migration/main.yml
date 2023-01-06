@@ -561,7 +561,9 @@
       - name: Stop DHCP server
         shell: |
             ps aux | grep external | grep -v root | tr -s ' ' | cut -d ' ' -f 2 | xargs kill -15
-        when: install.revert_to_ovs|bool
+        when:
+            - install.revert_to_ovs|bool
+            - not is_sriov|bool
 
 - name: Configure static IP address on undercloud for post-revert tempest testing
   hosts: undercloud
@@ -574,7 +576,9 @@
             ip add show dev eth2 | grep inet6 | grep -v fe80 | tr -s ' ' | cut -d ' ' -f 3 | cut -d '/' -f 1 | xargs -I N sudo nmcli con modify custom_connection ipv6.address N/64
             sudo nmcli con modify custom_connection ipv6.method manual
             sudo nmcli con up custom_connection
-        when: install.revert_to_ovs|bool
+        when:
+            - install.revert_to_ovs|bool
+            - not is_sriov|bool
 
 - name: Post migration
   hosts: undercloud
