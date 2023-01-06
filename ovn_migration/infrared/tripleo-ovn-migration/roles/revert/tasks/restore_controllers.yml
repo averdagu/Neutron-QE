@@ -55,8 +55,14 @@
         c2=`(openstack baremetal node show controller-2 -f yaml -c instance_info | grep display_name | awk '{print $2}')`;
         echo "$c2 = controller-2" >> /home/stack/baremetal_controller_directories.txt
 
-    - name: Save file in hypervisor
-      shell: scp /home/stack/baremetal_controller_directories.txt root@192.168.24.254:/ctl_plane_backups/
+- hosts: hypervisor
+  become: true
+  become_user: root
+  name: copy baremetal_controller_directories.txt from the undercloud
+  tasks:
+    - name: copy baremetal_controller_directories.txt
+      shell: |
+        scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -r  undercloud-0:/home/stack/baremetal_controller_directories.txt /ctl_plane_backups/
 
 - hosts: undercloud
   become: false
