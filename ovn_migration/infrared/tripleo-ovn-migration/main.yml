@@ -563,7 +563,7 @@
             ps aux | grep external | grep -v root | tr -s ' ' | cut -d ' ' -f 2 | xargs kill -15
         when:
             - install.revert_to_ovs|bool
-            - not is_sriov|bool
+            - not install.sriov|bool
 
 - name: Configure static IP address on undercloud for post-revert tempest testing
   hosts: undercloud
@@ -578,7 +578,7 @@
             sudo nmcli con up custom_connection
         when:
             - install.revert_to_ovs|bool
-            - not is_sriov|bool
+            - not install.sriov|bool
 
 - name: Post migration
   hosts: undercloud
