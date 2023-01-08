@@ -6,7 +6,7 @@ if [[ ! -f "$THT_PATH/roles_data.yaml" ]]; then
   sed -i 's/ControllerSriov/Controller/' $THT_PATH/roles_data.yaml
 fi
 
-openstack -vvv overcloud deploy  \
+openstack overcloud deploy  \
 --templates \
 --timeout 120 \
 --deployed-server \
