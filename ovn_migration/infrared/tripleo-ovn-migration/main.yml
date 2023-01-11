@@ -374,7 +374,10 @@
 
             - name: Fix controller group name for backup and restore
               shell: |
-                  sed -i "/tripleo_backup_and_restore_server/i \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \"tripleo_controller_group_name\": ControllerSriov," {{ ovn_migration_working_dir }}/playbooks/roles/recovery-backup/tasks/main.yml
+                  tasks_file={{ ovn_migration_working_dir }}/playbooks/roles/recovery-backup/tasks/main.yml
+                  sed -i "/tripleo_backup_and_restore_server/i \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \"tripleo_controller_group_name\": ControllerSriov," $tasks_file
+                  sed -i "/--inventory.*inventory.yaml$/a \ \ \ \ \ \ \ \ --extra-vars '{\n\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \"tripleo_controller_group_name\": ControllerSriov\n\ \ \ \ \ \ \ \ \ \ \ \ \ \ }'" $tasks_file
+                  sed -i "s/\(^.*--inventory.*inventory.yaml\)$/\1\ \\\/" $tasks_file
               when: install.fix_controller_group_name_for_sriov|bool
 
             - name: Fix subnet for backup and restore
