@@ -274,6 +274,11 @@ subparsers:
                       help: Temporary workaround. Inject parameter to override default subnets, see https://bugzilla.redhat.com/show_bug.cgi?id=2158437
                       default: False
 
+                  fix_controller_group_name_for_sriov:
+                      type: Bool
+                      help: Temporary workaround. Inject parameter to override controller group name, see https://bugzilla.redhat.com/show_bug.cgi?id=2158396
+                      default: False
+
                   inject_code_for_revert:
                       type: Bool
                       help: Temporary workaround. Inject code from patch for backup and restore https://review.opendev.org/c/openstack/neutron/+/835638

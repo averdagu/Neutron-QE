@@ -372,6 +372,11 @@
             - name: Copy the playbook files into ovn_migration working dir
               command: cp -rf {{ playbooks_path }} {{ ovn_migration_working_dir }}
 
+            - name: Fix controller group name for backup and restore
+              shell: |
+                  sed -i "/tripleo_backup_and_restore_server/i \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \"tripleo_controller_group_name\": ControllerSriov," {{ ovn_migration_working_dir }}/playbooks/roles/recovery-backup/tasks/main.yml
+              when: install.fix_controller_group_name_for_sriov|bool
+
             - name: Fix subnet for backup and restore
               shell: |
                   net=$(echo {{ install.backup_migration_ip }} | awk -F"." '{print $1"."$2"."$3".0/24"}')
