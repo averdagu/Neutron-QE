@@ -764,7 +764,7 @@
             mode: 0755
         when:
             - create_vms|bool
-            - is_sriov|bool
+            - install.delete_workload|bool
 
       - name: Run resources cleanup script
         shell:
@@ -773,4 +773,4 @@
             > {{ ovn_migration_working_dir }}/delete-resources.sh.log 2>&1
         when:
             - create_vms|bool
-            - is_sriov|bool
+            - install.delete_workload|bool

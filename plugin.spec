@@ -168,6 +168,11 @@ subparsers:
                       help: Whether to go over all relevant workload VMs before migration and make sure MTU is set properly, reboot the VM if needed.
                       default: False
 
+                  delete_workload:
+                      type: Bool
+                      help: Whether to delete workload after migration completed.
+                      default: False
+
             - title: Validations
               options:
                   validate_agents:
