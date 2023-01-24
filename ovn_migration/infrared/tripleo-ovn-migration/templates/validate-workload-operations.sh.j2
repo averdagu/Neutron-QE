@@ -47,7 +47,7 @@ validate_trunk_subports_connectivity(){
       done
     done
   else
-    [ "$resources_type" =~ "trunk" ] && echo FAIL: trunk_vms_fips file not found.  && return 1
+    [[ "$resources_type" =~ "trunk" ]] && echo FAIL: trunk_vms_fips file not found.  && return 1
   fi
   echo
 }
