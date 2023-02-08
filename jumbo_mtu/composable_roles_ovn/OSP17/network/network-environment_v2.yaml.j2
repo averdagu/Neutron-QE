@@ -37,3 +37,7 @@ parameter_defaults:
       neutron::plugins::ml2::ovn::ovn_emit_need_to_frag: True
 parameter_merge_strategies:
     ExtraConfig: merge
+    NetworkerParameters:
+        OVNCMSOptions: "enable-chassis-as-gw"
+    ControllerParameters:
+        OVNCMSOptions: ""

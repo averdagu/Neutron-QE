@@ -31,6 +31,8 @@ parameter_defaults:
     NeutronGlobalPhysnetMtu: 9000
     NetworkerParameters:
         OVNCMSOptions: "enable-chassis-as-gw"
+    ControllerParameters:
+        OVNCMSOptions: ""
     OVNEmitNeedToFrag: True
     ExtraConfig:
       neutron::plugins::ml2::path_mtu: 9000

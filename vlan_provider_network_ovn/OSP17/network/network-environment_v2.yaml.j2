@@ -32,6 +32,8 @@ parameter_defaults:
     NeutronTunnelTypes: 'geneve,vlan'
     NetworkerParameters:
         OVNCMSOptions: "enable-chassis-as-gw"
+    ControllerParameters:
+        OVNCMSOptions: ""
 {% if install.network.backend == 'vlan' %}
     NeutronGlobalPhysnetMtu: 8996
 {% else %}

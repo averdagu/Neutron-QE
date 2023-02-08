@@ -30,4 +30,6 @@ parameter_defaults:
     NeutronTunnelTypes: 'geneve,vlan'
     NetworkerParameters:
         OVNCMSOptions: "enable-chassis-as-gw"
+    ControllerParameters:
+        OVNCMSOptions: ""
 
