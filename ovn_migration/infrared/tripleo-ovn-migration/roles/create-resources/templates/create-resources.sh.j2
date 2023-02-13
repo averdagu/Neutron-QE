@@ -87,22 +87,27 @@ then
     subport_persistent_dhclient="no"
 fi
 
-openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  --subnet-range 192.168.168.0/24 ovn-migration-subnet-{{ resource_suffix }}
-openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  --subnet-range 2001:db8:cafe:1::/64 ovn-migration-subnet-ipv6-{{ resource_suffix }} --ip-version 6  --ipv6-ra-mode slaac --ipv6-address-mode slaac
+if [ "$resources_type" != "granular_poc" ]; then
+  openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  \
+    --subnet-range 192.168.168.0/24 ovn-migration-subnet-{{ resource_suffix }}
+  openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  \
+    --subnet-range 2001:db8:cafe:1::/64 ovn-migration-subnet-ipv6-{{ resource_suffix }} \
+    --ip-version 6  --ipv6-ra-mode slaac --ipv6-address-mode slaac
 
-[ "$resources_type" == "dvr" ] && dvr_params="--distributed --no-ha"
+  [ "$resources_type" == "dvr" ] && dvr_params="--distributed --no-ha"
 
-openstack router create ovn-migration-router-{{ resource_suffix }} $dvr_params
+  openstack router create ovn-migration-router-{{ resource_suffix }} $dvr_params
 
-openstack router set --external-gateway {{ public_network_name }} ovn-migration-router-{{ resource_suffix }}
+  openstack router set --external-gateway {{ public_network_name }} ovn-migration-router-{{ resource_suffix }}
 
-openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-{{ resource_suffix }}
-openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-ipv6-{{ resource_suffix }}
+  openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-{{ resource_suffix }}
+  openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-ipv6-{{ resource_suffix }}
 
-router_gw_ipv6_address=`openstack router show ovn-migration-router-{{ resource_suffix }} -c external_gateway_info -f json | jq '.external_gateway_info.external_fixed_ips[1].ip_address' | tr -d '"'`
-sudo ip -6 route del 2001:db8:cafe:1::/64 || true
+  router_gw_ipv6_address=`openstack router show ovn-migration-router-{{ resource_suffix }} -c external_gateway_info -f json | jq '.external_gateway_info.external_fixed_ips[1].ip_address' | tr -d '"'`
+  sudo ip -6 route del 2001:db8:cafe:1::/64 || true
 # TODO probably we should make this route persistent, i.e. to present even in case undercloud node has been rebooted for some reason (update?)
-sudo ip -6 route add 2001:db8:cafe:1::/64 via $router_gw_ipv6_address
+  sudo ip -6 route add 2001:db8:cafe:1::/64 via $router_gw_ipv6_address
+fi
 
 num_hypervisors=`openstack hypervisor list -f value | wc -l`
 
@@ -192,6 +197,70 @@ runcmd:
   - [ sh, -c , \"systemctl restart NetworkManager\" ]
 "
 
+batches_num=2
+net_addr=200
+create_granular_poc_vm_template(){
+    batch=$1
+    vm=$2
+    granular_template="#cloud-config
+password: 12345678
+chpasswd: { expire: False }
+ssh_pwauth: True
+write_files:
+  - path: /etc/sysconfig/network-scripts/ifcfg-eth0
+    owner: \"root\"
+    permissions: \"777\"
+    content: |
+      DEVICE=eth0
+      BOOTPROTO=dhcp
+      ONBOOT=yes
+      PREFIX=24
+  - path: /etc/sysconfig/network-scripts/ifcfg-eth1
+    owner: \"root\"
+    permissions: \"777\"
+    content: |
+      DEVICE=eth1
+      BOOTPROTO=none
+      ONBOOT=yes
+      PREFIX=24
+      IPADDR=192.168.$((net_addr+batch)).$((net_addr+vm))
+runcmd:
+  - [ sh, -c , \"systemctl restart NetworkManager\" ]
+"
+/bin/cat <<EOM > create_interfaces_for_vm_${batch}_${vm}.yaml
+$create_granular_poc_vm_template
+EOM
+}
+
+declare -a SUBPORT_IPS
+launch_granular_poc_instances(){
+    for n in `seq $batches_num`; do
+        lindex=$((n-1))
+        openstack network create ovn-migration-net-{{ resource_suffix }}-$lindex
+        openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}-$lindex  \
+            --subnet-range 192.168.$((net_addr+lindex)).0/24 ovn-migration-subnet-{{ resource_suffix }}-$lindex
+    done
+    for i in $(seq 1 $num_hypervisors);do
+          [ "$num_hypervisors" == "1" ] && index_suffix="" || index_suffix="-$i"
+          batch=$(expr $((i-1)) % $batches_num)
+          vm=$(expr $((i-1)) / $batches_num)
+          IP="192.168.$((net_addr+batch)).$((net_addr+vm))"
+          openstack port create --network {{ public_network_name }} \
+              --security-group ovn-migration-sg-{{ resource_suffix }} ovn-migration-port-granular-ext-{{ resource_suffix }}$index_suffix
+          openstack port create --network ovn-migration-net-{{ resource_suffix }}-$batch \
+              --fixed-ip subnet=ovn-migration-subnet-{{ resource_suffix }}-$batch,ip-address=$IP \
+              --security-group ovn-migration-sg-{{ resource_suffix }} ovn-migration-port-granular-int-{{ resource_suffix }}$index_suffix
+          SUBPORT_IPS[$i]=$IP
+          create_granular_poc_vm_template $batch $vm
+          openstack server create --flavor $flavor_name --image $image_name \
+              --key-name ovn-migration-{{ resource_suffix }}  --host compute-$((i-1)).redhat.local \
+              --nic port-id=ovn-migration-port-granular-ext-{{ resource_suffix }}$index_suffix  \
+              --nic port-id=ovn-migration-port-granular-int-{{ resource_suffix }}$index_suffix  \
+              --security-group ovn-migration-sg-{{ resource_suffix }} \
+              ovn-migration-server-granular-ext-{{ resource_suffix }}$index_suffix --config-drive True --user-data create_interfaces_for_vm_${batch}_${vm}.yaml
+    done
+}
+
 launch_sriov_pf_int_instances(){
     /bin/cat <<EOM > create_interface.yaml
 $create_interface_template
@@ -225,7 +294,6 @@ EOM
 }
 
 declare -a TRUNK_VMS_FIPS
-declare -a SUBPORT_IPS
 launch_trunk_instances(){
     network=$1
 
@@ -365,6 +433,12 @@ then
     type_suffixes="trunk-ext vf-ext pf-ext"
 fi
 
+if [ "$resources_type" == "granular_poc" ]
+then
+    launch_granular_poc_instances
+    type_suffixes="granular-ext"
+fi
+
 
 for i in $(seq 1 $num_hypervisors)
 do
@@ -391,18 +465,19 @@ do
         done
 
         vm_id=`openstack server show ovn-migration-server-$type_suffix-pinger$index_suffix -c id -f value`
-        port_id=`openstack port list --device-id=$vm_id -c ID -f value`
+	[ "$resources_type" == "granular_poc" ] && network_filter="--network {{ public_network_name }}"
+        port_id=`openstack port list --device-id=$vm_id $network_filter -c ID -f value`
 
         # Wait till the port is ACTIVE
         echo "Wait till the port is ACTIVE"
-        port_status=`openstack port list --device-id=$vm_id -c Status -f value`
+        port_status=`openstack port list --device-id=$vm_id $network_filter  -c Status -f value`
 
         num_attempts=0
         while [ "$port_status" != "ACTIVE" ]
         do
             num_attempts=$((num_attempts+1))
             sleep 5
-            port_status=`openstack port list --device-id=$vm_id -c Status -f value`
+            port_status=`openstack port list --device-id=$vm_id $network_filter -c Status -f value`
             echo "Port status = $port_status"
             if [ $num_attempts -gt 24 ]
             then
@@ -577,6 +652,29 @@ if [[ "$resources_type" =~ "trunk" ]]; then
                 fi
                 # If short ping worked we start an infinite ping
                 ssh -i ~/.ssh/$key $server_user_name@${TRUNK_VMS_FIPS[$i]}  "ping -D ${SUBPORT_IPS[$s]} > ping_${SUBPORT_IPS[$s]}_output 2>&1 &"
+            fi
+        done
+    done
+fi
+
+# For granular-poc workload we will run ping from each server to internal ports on other servers from same batch
+if [[ "$resources_type" =~ "granular" ]]; then
+    for i in $(seq 1 $num_hypervisors); do
+        ibatch=$(expr $((i-1)) % $batches_num)
+        for s in $(seq 1 $num_hypervisors); do
+            if [ $s -ne $i ]; then
+                sbatch=$(expr $((s-1)) % $batches_num)
+                # We want to ping only if VMs are from the same batch
+                [ $ibatch -ne $sbatch ] && continue
+                # First we check that short ping works
+                ip=$(sed "${i}q;d"  {{ ovn_migration_temp_dir }}/server_fips)
+                timeout 20 ssh -i ~/.ssh/$key $server_user_name@$ip  "ping ${SUBPORT_IPS[$s]} -c 3"
+                if [ $? -ne 0 ]; then
+                    echo "Internal port is not pingable. Something went wrong."
+                    exit 1
+                fi
+                # If short ping worked we start an infinite ping
+                ssh -i ~/.ssh/$key $server_user_name@$ip  "ping -D ${SUBPORT_IPS[$s]} > ping_${SUBPORT_IPS[$s]}_output 2>&1 &"
             fi
         done
     done

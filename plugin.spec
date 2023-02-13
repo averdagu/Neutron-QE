@@ -100,6 +100,7 @@ subparsers:
                           trunk: create VMs with trunk ports
                           trunk_ext: use VMs with trunk ports, launch VMs on external(aka provider) network
                           trunk_ext_with_normal_int: use VMs with trunk ports, launch VMs on external(aka provider) network. Additionally run VMs according to normal type
+                          granular_poc: create workload suitable for testing granular approach of migration/revert, where there are 2 groups of VMs, requires minimum 4 compute nodes
                       choices:
                         - normal
                         - normal_ext
@@ -116,6 +117,7 @@ subparsers:
                         - trunk
                         - trunk_ext
                         - trunk_ext_with_normal_int
+                        - granular_poc
                       default: normal_ext_int
 
                   image_name:
