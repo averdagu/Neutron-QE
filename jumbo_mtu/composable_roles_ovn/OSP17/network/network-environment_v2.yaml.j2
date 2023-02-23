@@ -32,12 +32,12 @@ parameter_defaults:
     NeutronExternalNetworkBridge: "br-ex"
 # This should be only for OSP > 16, and ovn_emit_need_to_frag: True below
     OVNEmitNeedToFrag: True
+    NetworkerParameters:
+        OVNCMSOptions: "enable-chassis-as-gw"
+    ControllerParameters:
+        OVNCMSOptions: ""
     ExtraConfig:
       neutron::plugins::ml2::path_mtu: 9000
       neutron::plugins::ml2::ovn::ovn_emit_need_to_frag: True
 parameter_merge_strategies:
     ExtraConfig: merge
-    NetworkerParameters:
-        OVNCMSOptions: "enable-chassis-as-gw"
-    ControllerParameters:
-        OVNCMSOptions: ""
