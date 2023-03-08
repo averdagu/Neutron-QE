@@ -62,32 +62,32 @@ openstack security group rule create --ingress --ethertype IPv6 --protocol tcp -
 
 [ "{{ loadbalancer }}" == "True" ] && openstack security group rule create --ingress --protocol tcp --dst-port 80  ovn-migration-sg-{{ resource_suffix }}
 
-if [[ "$resources_type" =~ "sriov_int" ]]
-then
-    vlan_id=$(openstack network create ovn-migration-net-{{ resource_suffix }} | awk -F'[ \t]*\\|[ \t]*' '/ provider:segmentation_id / {print $3}')
-elif [[ "$resources_type" =~ "sriov_ext" ]]
-then
-    vlan_id=$(openstack network show {{ public_network_name }} | awk -F'[ \t]*\\|[ \t]*' '/ provider:segmentation_id / {print $3}')
-elif [[ "$resources_type" =~ ^trunk ]]
-then
-    subport_vlan_id=1001
-    openstack network create ovn-migration-net-{{ resource_suffix }}
-else
-    openstack network create ovn-migration-net-{{ resource_suffix }}
-fi
-
-if [[ "$resources_type" =~ "sriov" ]]
-then
-    bootproto="dhcp"
-    persistent_dhclient="yes"
-fi
-if [[ "$resources_type" =~ "trunk" ]]
-then
-    subport_bootproto="none"
-    subport_persistent_dhclient="no"
-fi
-
 if ! [[ "$resources_type" =~ "granular_poc" ]]; then
+  if [[ "$resources_type" =~ "sriov_int" ]]
+  then
+      vlan_id=$(openstack network create ovn-migration-net-{{ resource_suffix }} | awk -F'[ \t]*\\|[ \t]*' '/ provider:segmentation_id / {print $3}')
+  elif [[ "$resources_type" =~ "sriov_ext" ]]
+  then
+      vlan_id=$(openstack network show {{ public_network_name }} | awk -F'[ \t]*\\|[ \t]*' '/ provider:segmentation_id / {print $3}')
+  elif [[ "$resources_type" =~ ^trunk ]]
+  then
+      subport_vlan_id=1001
+      openstack network create ovn-migration-net-{{ resource_suffix }}
+  else
+      openstack network create ovn-migration-net-{{ resource_suffix }}
+  fi
+
+  if [[ "$resources_type" =~ "sriov" ]]
+  then
+      bootproto="dhcp"
+      persistent_dhclient="yes"
+  fi
+  if [[ "$resources_type" =~ "trunk" ]]
+  then
+      subport_bootproto="none"
+      subport_persistent_dhclient="no"
+  fi
+
   openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  \
                    --subnet-range 192.168.168.0/24 ovn-migration-subnet-{{ resource_suffix }}
   openstack subnet create  --network ovn-migration-net-{{ resource_suffix }}  \

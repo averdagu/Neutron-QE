@@ -24,6 +24,7 @@
             validate_vm_live_migration: "{{ install.validate_vm_live_migration }}"
             validate_vm_migration: "{{ install.validate_vm_migration }}"
             validate_vm_reboot: "{{ install.validate_vm_reboot }}"
+            ping_during_vm_migration: "{{ install.ping_during_vm_migration }}"
             fetch_junit_xml: "{{ install.fetch_junit_xml }}"
         when: install is defined
 
@@ -48,6 +49,7 @@
             validate_vm_live_migration: "{{ validate_vm_live_migration }}"
             validate_vm_migration: "{{ validate_vm_migration }}"
             validate_vm_reboot: "{{ validate_vm_reboot }}"
+            ping_during_vm_migration: "{{ ping_during_vm_migration }}"
             fetch_junit_xml: "{{ fetch_junit_xml }}"
         when: install is not defined
 
@@ -215,7 +217,9 @@
         file:
             state: directory
             path: "{{ ovn_migration_working_dir }}/dumps"
-        when: migrate|bool
+        when:
+            - migrate|bool
+            - install.dump_objects|bool
 
       - name: Set necessary facts (infrared deployment)
         set_fact:
@@ -373,6 +377,7 @@
 
             - name: Copy the playbook files into ovn_migration working dir
               command: cp -rf {{ playbooks_path }} {{ ovn_migration_working_dir }}
+              when: not install.batched|bool
 
             - name: Fix controller group name for backup and restore
               shell: |
@@ -391,41 +396,26 @@
             - name: Delete temp directory for neutron if present
               file:
                   state: absent
-                  path: /tmp/neutron
-              when: install.inject_code_for_revert|bool
+                  path: ~/neutron
+              when: install.batched|bool
 
             - name : Create temp directory for neutron if not present
               file:
                   state: directory
-                  path: /tmp/neutron
-              when: install.inject_code_for_revert|bool
+                  path: ~/neutron
+              when: install.batched|bool
 
-            - name: Clone upstream neutron repo to a temp directory
-              git:
-                  repo: 'https://review.opendev.org/openstack/neutron'
-                  dest: /tmp/neutron
-                  clone: yes
-                  update: yes
-              when: install.inject_code_for_revert|bool
-
-            - name: Install playbooks for OVN migration revert
+            - name: Clone upstream neutron repo and apply changes
               shell: |
-                  cd /tmp/neutron
-                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/recovery-backup/ {{ ovn_migration_working_dir }}/playbooks/roles
-                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/revert/ {{ ovn_migration_working_dir }}/playbooks/roles
-                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/ovn-migration.yml {{ ovn_migration_working_dir }}/playbooks
-                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/revert.yml {{ ovn_migration_working_dir }}/playbooks
-                  cp -rf tools/ovn_migration/tripleo_environment/playbooks/roles/backup/tasks/main.yml {{ ovn_migration_working_dir }}/playbooks/roles/backup/tasks
-                  if [ "{{ osp_major_version | int }}" == "17" ]; then
-                    curl -Lo /home/stack/ovn_migration.sh http://file.tlv.redhat.com/~rsafrono/files/ovn_migration_revert.sh
-                  else
-                    curl -Lo /home/stack/ovn_migration.sh http://file.tlv.redhat.com/~rsafrono/files/ovn_migration_16.2_revert.sh
-                  fi
+                  git clone "https://code.engineering.redhat.com/gerrit/neutron" ~/neutron
+                  pushd ~/neutron
+                  git checkout -b rhos-17.1-trunk-patches origin/rhos-17.1-trunk-patches
+                  git fetch https://code.engineering.redhat.com/gerrit/neutron refs/changes/23/440623/4 && git checkout -b change-440623 FETCH_HEAD
                   sudo mv /usr/bin/ovn_migration.sh /usr/bin/ovn_migration.sh.bak
-                  sudo mv /home/stack/ovn_migration.sh /usr/bin/
+                  sudo cp ~/neutron/tools/ovn_migration/tripleo_environment/ovn_migration.sh /usr/bin
                   sudo chmod +x /usr/bin/ovn_migration.sh
-                  sed -i '/Pre\ migration\ checks/,+6 d' {{ ovn_migration_working_dir }}/playbooks/ovn-migration.yml
-              when: install.inject_code_for_revert|bool
+                  popd
+              when: install.batched|bool
 
             - name: Set the public network name (infrared deployment)
               set_fact:
@@ -439,8 +429,8 @@
 
             - name: Create ovn migration script
               template:
-                  src: templates/start-ovn-migration.sh.j2
-                  dest: "{{ ovn_migration_working_dir }}/start-ovn-migration.sh"
+                  src: templates/run-ovn-migration-cmd.sh.j2
+                  dest: "{{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh"
                   mode: 0755
 
             - name: Generate dumping objects script
@@ -448,28 +438,56 @@
                   src: templates/dump-objects.sh.j2
                   dest: "{{ ovn_migration_working_dir }}/dump-objects.sh"
                   mode: 0755
+              when: install.dump_objects|bool
 
             - name: Run dumping objects script to save initial state
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/dump-objects.sh initial_state full
                   > {{ ovn_migration_working_dir }}/dumps/dump-objects_initial_state.sh.log 2>&1
+              when: install.dump_objects|bool
 
             - name: Generate inventory file for ovn migration
               shell:
                   set -o pipefail &&
-                  {{ ovn_migration_working_dir }}/start-ovn-migration.sh generate-inventory > {{ ovn_migration_working_dir }}/generate-inventory.log 2>&1
+                  {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh generate-inventory > {{ ovn_migration_working_dir }}/generate-inventory.log 2>&1
+
+            - name: Copy default batches config
+              copy:
+                  src: templates/batches_default_config
+                  dest: /tmp/batches_config
+              when:
+                  - install.batched|bool
+
+            - name: Append batches configuration
+              shell: |
+                  [ "{{ install.batches_config }}" != "" ] && curl -Lo /tmp/batches_config {{ install.batches_config }}
+                  echo >> ~/hosts_for_migration
+                  cat /tmp/batches_config >> ~/hosts_for_migration
+              when:
+                  - install.batched|bool
+
+            - name: Download batched scenario tasks
+              delegate_to: localhost
+              get_url:
+                  url: "{{ install.batched_scenario_tasks }}"
+                  dest: "./batched_scenario_tasks.yml"
+                  force: true
+              when:
+                  - install.batched|bool
+                  - install.batched_scenario_tasks != ''
 
             - name: Set MTU T1
               shell:
                   set -o pipefail &&
-                  {{ ovn_migration_working_dir }}/start-ovn-migration.sh setup-mtu-t1 > {{ ovn_migration_working_dir }}/setup-mtu-t1.log 2>&1
-              when: reduce_mtu|bool
+                  {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh setup-mtu-t1 > {{ ovn_migration_working_dir }}/setup-mtu-t1.log 2>&1
+              when:
+                  - reduce_mtu|bool
 
             - name: Reduce mtu of the pre migration networks
               shell:
                   set -o pipefail &&
-                  {{ ovn_migration_working_dir }}/start-ovn-migration.sh reduce-mtu > {{ ovn_migration_working_dir }}/reduce-mtu.log 2>&1
+                  {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh reduce-mtu > {{ ovn_migration_working_dir }}/reduce-mtu.log 2>&1
               when: reduce_mtu|bool
 
             - name: Create MTU check script
@@ -526,18 +544,50 @@
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/dump-objects.sh before_ovn_migration
                   > {{ ovn_migration_working_dir }}/dumps/dump-objects_before_ovn-migration.sh.log 2>&1
+              when: install.dump_objects|bool
 
             - name: Start the migration process
               shell:
                   set -o pipefail &&
-                  {{ ovn_migration_working_dir }}/start-ovn-migration.sh start-migration
-                  > {{ ovn_migration_working_dir }}/start-ovn-migration.sh.log 2>&1
+                  {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh start-migration
+                  > {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh.log 2>&1
+              when: not install.batched|bool
+
+            - name: Start the migration process (batched)
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh install-ovn
+                  > {{ ovn_migration_working_dir }}/install-ovn.sh.log 2>&1
+              when: install.batched|bool
+
+            - name: Activate OVN (batched, all_at_once)
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh activate-ovn
+                  > {{ ovn_migration_working_dir }}/activate-ovn.sh.log 2>&1
+              when:
+                  - install.batched|bool
+                  - install.batched_scenario_tasks == ''
+
+            - name: Execute batched migration scenario tasks
+              include_tasks: ./batched_scenario_tasks.yml
+              when:
+                  - install.batched|bool
+                  - install.batched_scenario_tasks != ''
+
+            - name: Cleanup OVS (batched)
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh cleanup-ovs
+                  > {{ ovn_migration_working_dir }}/cleanup-ovs.sh.log 2>&1
+              when: install.batched|bool
 
             - name: Run dumping objects script after migration to ovn
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/dump-objects.sh after_ovn_migration
                   > {{ ovn_migration_working_dir }}/dumps/dump-objects_after_ovn-migration.sh.log 2>&1
+              when: install.dump_objects|bool
 
         when: migrate|bool
 
@@ -562,6 +612,7 @@
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/dump-objects.sh after_ovs_restore full
                   > {{ ovn_migration_working_dir }}/dumps/dump-objects_after_restoring_ovs.sh.log 2>&1
+              when: install.dump_objects|bool
 
         when: install.revert_to_ovs|bool
 
