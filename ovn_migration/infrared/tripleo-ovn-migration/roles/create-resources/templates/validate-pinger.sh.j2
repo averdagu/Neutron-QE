@@ -5,6 +5,7 @@ resources_type={{ resources_type }}
 server_user_name={{ server_user_name }}
 packet_loss_threshold={{ packet_loss_threshold }}
 validations_type=$1
+validate_ipv6={{ validate_ipv6 }}
 [ "{{ osp_major_version }}" -ge "17" ] && key=id_extra_keys || key=id_rsa
 
 check_if_pinger_stopped(){
@@ -42,7 +43,7 @@ if [ "$validations_type" == "ovn_migration_validations" ]; then
     done
     echo PASS: test_workload_vms_ipv4_downtime
 
-    if ! ([[ "$resources_type" =~ "normal_ext" ]] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext" ]]); then
+    if ! ([[ "$resources_type" =~ "normal_ext" ]] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext" ]]) && [ "$validate_ipv6" == "True" ]; then
         echo TEST: test_workload_vms_ipv6_downtime
         file_list=`ls {{ ovn_migration_temp_dir }}/*ipv6_ping.out`
         [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
@@ -96,15 +97,17 @@ if [ "$validations_type" == "ovn_migration_revert_validations" ]; then
     done < "{{ ovn_migration_temp_dir }}/server_fips"
     echo PASS: test_workload_vms_ipv4_connectivity
 
-    echo TEST: test_workload_vms_ipv6_connectivity
-    [ ! -e {{ ovn_migration_temp_dir }}/server_ipv6_addresses ] && echo "FAIL: File with VM addresses not found. Something went wrong." && exit
-    while read ip; do
-        ping6 -c 3 $ip
-        if [ $? -ne 0 ]; then
-            echo "FAIL: No response from $ip" && exit
-        fi
-    done < "{{ ovn_migration_temp_dir }}/server_ipv6_addresses"
-    echo PASS: test_workload_vms_ipv6_connectivity
+    if [ "$validate_ipv6" == "True" ]; then
+        echo TEST: test_workload_vms_ipv6_connectivity
+        [ ! -e {{ ovn_migration_temp_dir }}/server_ipv6_addresses ] && echo "FAIL: File with VM addresses not found. Something went wrong." && exit
+        while read ip; do
+            ping6 -c 3 $ip
+            if [ $? -ne 0 ]; then
+                echo "FAIL: No response from $ip" && exit
+            fi
+        done < "{{ ovn_migration_temp_dir }}/server_ipv6_addresses"
+        echo PASS: test_workload_vms_ipv6_connectivity
+    fi
 
     if [[ "$resources_type" =~ "trunk" ]]; then
         echo TEST: test_trunk_subports_connectivity

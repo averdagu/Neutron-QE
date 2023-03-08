@@ -662,7 +662,7 @@ validate_vms_connectivity (){
     done
 }
 validate_vms_connectivity
-validate_vms_connectivity ipv6
+[ "{{ validate_ipv6 }}" == "True" ] && validate_vms_connectivity ipv6
 
 wait_until_is_active(){
     name=$1

@@ -19,6 +19,7 @@ done < /tmp/nodes_data
 server_user_name={{ server_user_name }}
 ovn_migration_dir={{ ovn_migration_working_dir }}
 resources_type={{ resources_type  }}
+validate_ipv6={{ validate_ipv6 }}
 
 servers_with_trunks=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | grep trunk | awk '{print $1}')
 servers_no_trunks=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | grep -v trunk | awk '{print $1}')
@@ -71,7 +72,7 @@ validate_vms_connectivity(){
     echo SSH test succeeded
   done
 
-  if [ -s $ovn_migration_dir/server_ipv6_addresses ] ; then
+  if [ -s $ovn_migration_dir/server_ipv6_addresses ] && [ "$validate_ipv6" == "True" ]; then
     for server_ipv6 in `comm -12 <(sort $ovn_migration_dir/server_ipv6_addresses) <(sort /tmp/ip_addresses)`; do
       echo Pinging $server_ipv6
       ping6 -c 3 $server_ipv6

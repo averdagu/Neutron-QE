@@ -177,6 +177,11 @@ subparsers:
 
             - title: Validations
               options:
+                  validate_ipv6:
+                      type: Bool
+                      help: Whether to validate ipv6.
+                      default: True
+
                   validate_agents:
                       type: Bool
                       help: Whether to validate agents health before and after migration to OVN and check that OVS-related agents are removed.
