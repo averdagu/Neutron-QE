@@ -270,13 +270,13 @@ launch_granular_poc_instances(){
 
         openstack server create --flavor $flavor_name --image $image_name --security-group ovn-migration-sg-{{ resource_suffix }} \
                 --network {{ public_network_name }} --network ovn-migration-net-vnf1-{{ resource_suffix }}-zone$lindex ovn-migration-server-granular-ext-{{ resource_suffix }}-1-zone$lindex \
-                --host $(echo $zone_hypervisors | awk '{print $1}') --key-name ovn-migration-{{ resource_suffix }}
+                --availability-zone ovn-migration-zone-${lindex}:$(echo $zone_hypervisors | awk '{print $1}') --key-name ovn-migration-{{ resource_suffix }}
         openstack server create --flavor $flavor_name --image $image_name --security-group ovn-migration-sg-{{ resource_suffix }} \
                 --network {{ public_network_name }} --network ovn-migration-net-vnf2-{{ resource_suffix }}-zone$lindex ovn-migration-server-granular-ext-{{ resource_suffix }}-2-zone$lindex \
-                --host $(echo $zone_hypervisors | awk '{print $NF}') --key-name ovn-migration-{{ resource_suffix }}
+                --availability-zone ovn-migration-zone-${lindex}:$(echo $zone_hypervisors | awk '{print $NF}') --key-name ovn-migration-{{ resource_suffix }}
         openstack server create --flavor $flavor_name --image $image_name --security-group ovn-migration-sg-{{ resource_suffix }} \
                 --network {{ public_network_name }} --network ovn-migration-net-vnf1-{{ resource_suffix }}-zone$lindex ovn-migration-server-granular-ext-{{ resource_suffix }}-3-zone$lindex \
-                --host $(echo $zone_hypervisors | awk '{print $NF}') --key-name ovn-migration-{{ resource_suffix }}
+                --availability-zone ovn-migration-zone-${lindex}:$(echo $zone_hypervisors | awk '{print $NF}') --key-name ovn-migration-{{ resource_suffix }}
         openstack port create --network {{ public_network_name }} ovn-migration-trunk-parent-port-{{ resource_suffix }}-$lindex --security-group ovn-migration-sg-{{ resource_suffix }}
         parent_trunk_mac="$( openstack port show ovn-migration-trunk-parent-port-{{ resource_suffix }}-$lindex | awk '/ mac_address / { print $4 }' )"
         openstack port create --network ovn-migration-net-vnf1-{{ resource_suffix }}-zone$lindex --mac-address "$parent_trunk_mac" \
@@ -289,7 +289,7 @@ launch_granular_poc_instances(){
         create_granular_poc_trunk_vm_template $lindex
         openstack server create ovn-migration-trunk-server-granular-ext-{{ resource_suffix }}-zone$lindex --flavor $flavor_name --image $image_name \
                 --security-group ovn-migration-sg-{{ resource_suffix }} --nic port-id=ovn-migration-trunk-parent-port-{{ resource_suffix }}-$lindex \
-                --host $(echo $zone_hypervisors | awk '{print $1}') --key-name ovn-migration-{{ resource_suffix }} \
+                --availability-zone ovn-migration-zone-${lindex}:$(echo $zone_hypervisors | awk '{print $1}') --key-name ovn-migration-{{ resource_suffix }} \
                 --config-drive True --user-data create_interfaces_for_trunk_vm_${lindex}.yaml
     done
 }
