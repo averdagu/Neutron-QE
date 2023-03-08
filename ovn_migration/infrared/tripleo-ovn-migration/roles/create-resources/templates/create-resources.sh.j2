@@ -584,7 +584,7 @@ else
     for i in $(seq 1 $num_hypervisors); do
         [ "$num_hypervisors" == "1" ] && index_suffix="" || index_suffix="-$i"
         for type_suffix in $type_suffixes; do
-            wait_till_server_is_active openstack server show ovn-migration-server-$type_suffix-{{ resource_suffix }}$index_suffix
+            wait_till_server_is_active ovn-migration-server-$type_suffix-{{ resource_suffix }}$index_suffix
             vm_id=`openstack server show ovn-migration-server-$type_suffix-pinger$index_suffix -c id -f value`
             [ "$resources_type" == "granular_poc" ] && network_filter="--network {{ public_network_name }}"
             port_id=`openstack port list --device-id=$vm_id $network_filter -c ID -f value`
