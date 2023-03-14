@@ -2,7 +2,7 @@
 
 set -x
 
-source {{ ovn_migration_temp_dir }}/pinger_venv/bin/activate
+source /home/stack/.ovn_migration_pinger_venv/bin/activate
 
 pinger_ips=""
 for ip in `cat {{ ovn_migration_temp_dir }}/server_fips`

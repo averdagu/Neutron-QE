@@ -2,9 +2,9 @@
 
 set -x
 
-echo "creating virtual environment in {{ ovn_migration_temp_dir }}/pinger_venv"
-python3 -m venv {{ ovn_migration_temp_dir }}/pinger_venv
-source {{ ovn_migration_temp_dir }}/pinger_venv/bin/activate
+echo "creating virtual environment in /home/stack/.ovn_migration_pinger_venv"
+python3 -m venv /home/stack/.ovn_migration_pinger_venv
+source /home/stack/.ovn_migration_pinger_venv/bin/activate
 pip install --upgrade pip
 pip install sh
 pip install netaddr
