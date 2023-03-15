@@ -11,7 +11,7 @@ flavor_name={{ flavor_name }}
 openstack image show $image_name
 if [ "$?" != "0" ]
 then
-    if [[ "$resources_type" =~ "sriov" ]] || [[ "$resources_type" =~ "trunk" ]]
+    if [[ "$resources_type" =~ "sriov" ]] || [[ "$resources_type" =~ "trunk" ]] || [[ "$resources_type" =~ "granular" ]]
     then
         image_url=http://download.devel.redhat.com/rhel-8/rel-eng/updates/RHEL-8/RHEL-8.2.0-updates-20200422.1/compose/BaseOS/x86_64/images/rhel-guest-image-8.2-326.x86_64.qcow2
         image_os='rhel-8'

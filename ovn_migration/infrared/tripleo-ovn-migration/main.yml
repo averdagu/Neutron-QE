@@ -24,6 +24,7 @@
             validate_vm_live_migration: "{{ install.validate_vm_live_migration }}"
             validate_vm_migration: "{{ install.validate_vm_migration }}"
             validate_vm_reboot: "{{ install.validate_vm_reboot }}"
+            ping_during_vm_migration: "{{ install.ping_during_vm_migration }}"
             fetch_junit_xml: "{{ install.fetch_junit_xml }}"
         when: install is defined
 
@@ -48,6 +49,7 @@
             validate_vm_live_migration: "{{ validate_vm_live_migration }}"
             validate_vm_migration: "{{ validate_vm_migration }}"
             validate_vm_reboot: "{{ validate_vm_reboot }}"
+            ping_during_vm_migration: "{{ ping_during_vm_migration }}"
             fetch_junit_xml: "{{ fetch_junit_xml }}"
         when: install is not defined
 

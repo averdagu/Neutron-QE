@@ -7,9 +7,9 @@ SSH_USER={{ overcloud_ssh_user }}
 
 declare -A node_ips
 if [ "{{ osp_major_version }}" -le "16" ]; then
-  openstack server list -c Name -c Networks -f value | sed 's/ctlplane=//' > /tmp/nodes_data
+  openstack server list -c Name -c Networks -f value | sed 's/ctlplane=//' | tee /tmp/nodes_data
 else
-  metalsmith list | grep ctlplane | awk '{print $(NF-5),$(NF-1)}' | sed 's/ctlplane=//' > /tmp/nodes_data
+  metalsmith list | grep ctlplane | awk '{print $(NF-5),$(NF-1)}' | sed 's/ctlplane=//' | tee /tmp/nodes_data
 fi
 while read -r node ip; do
     node_ips[$node]=$ip
@@ -20,9 +20,14 @@ server_user_name={{ server_user_name }}
 ovn_migration_dir={{ ovn_migration_working_dir }}
 resources_type={{ resources_type  }}
 validate_ipv6={{ validate_ipv6 }}
+ping_during_vm_migration={{ ping_during_vm_migration }}
+ping_requests=5
+debug_hint="See details in $(basename $0).log."
+public_network={{ public_network }}
 
-servers_with_trunks=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | grep trunk | awk '{print $1}')
-servers_no_trunks=$(openstack server list -c ID -c Name -f value | grep 'migration.*pinger' | grep -v trunk | awk '{print $1}')
+openstack server list --long -c ID -c Name -c Host -f value | grep 'migration.*pinger' > /tmp/workload_servers
+servers_with_trunks=$(cat /tmp/workload_servers | grep 'migration.*pinger' | grep trunk | awk '{print $1}')
+servers_no_trunks=$(cat /tmp/workload_servers | grep 'migration.*pinger' | grep -v trunk | awk '{print $1}')
 
 trunk_servers_for_migration=$(echo $servers_with_trunks | awk '{print $1}')
 trunk_servers_for_reboot=$(echo $servers_with_trunks | awk '{print $NF}')
@@ -32,67 +37,383 @@ normal_servers_for_reboot=$(echo $servers_no_trunks | awk '{print $1}')
 
 [ "{{ osp_major_version }}" -ge "17" ] && key=id_extra_keys || key=id_rsa
 
-validate_trunk_subports_connectivity(){
-  if [ -s $ovn_migration_dir/trunk_vms_fips ]; then
-    echo Validating subports connectivity
-    openstack server show $server -c addresses -f value | sed 's/.*=\(.*\)/\1/' | tr -d " " | tr "," "\n" > /tmp/ip_addresses
+summary_file=$ovn_migration_dir/connectivity_summary_file
+[ -e $summary_file ] && rm $summary_file
+[ -e /tmp/ext_ips ] && rm /tmp/ext_ips
 
-    for fip in `comm -12 <(sort $ovn_migration_dir/trunk_vms_fips) <(sort /tmp/ip_addresses)`; do
-      ips=$(timeout 10 ssh -i ~/.ssh/$key $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
-      for ip in $ips; do
-        timeout 10 ssh -i ~/.ssh/$key $server_user_name@$fip ping -c 3 $ip
-        if [ $? -ne 0 ]; then
-          echo "FAIL: Subport connectivity test failed."
-          return 1
-        fi
-      done
-    done
+get_ip(){
+  port=$(openstack port list --device-id $1 --network $public_network -c ID -f value )
+  if [ "$port" == "" ]; then
+    port=$(openstack port list --device-id $1 --network ovn-migration-net-pinger  -c ID -f value)
+    ip=$(openstack floating ip list --port $port -c 'Floating IP Address' -f value)
   else
-    [[ "$resources_type" =~ "trunk" ]] && echo FAIL: trunk_vms_fips file not found.  && return 1
+    ip=$(openstack port show $port -c fixed_ips -f json | jq '.fixed_ips[0].ip_address' | tr -d '"' )
   fi
-  echo
+  echo $ip
 }
 
-validate_vms_connectivity(){
-  ! [ -s $ovn_migration_dir/server_fips ] && echo FAIL: File with server fips does not exist && return 1
-  echo Validating vms connectivity
-  openstack server show $server -c addresses -f value | sed 's/.*=\(.*\)/\1/' | tr -d " " | tr "," "\n" > /tmp/ip_addresses
-  for server_ip in `comm -12 <(sort $ovn_migration_dir/server_fips) <(sort /tmp/ip_addresses)`; do
-    echo Pinging $server_ip
-    ping -c 3 $server_ip
-    [ $? -ne 0 ] && echo FAIL: Server ip $server_ip is not responding. && return 1
-    echo Ping test succeeded
-    echo Testing ssh to $server_ip
-    timeout 20 ssh -i ~/.ssh/$key -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
-    if [ $? -ne 0 ]; then
-        echo "FAIL: VM address $server_ip is not accessible via ssh."
-        return 1
-    fi
-    echo SSH test succeeded
-  done
+for id in `cat /tmp/workload_servers | cut -d' ' -f1`; do
+  get_ip $id >> /tmp/ext_ips
+done
+paste -d" " /tmp/workload_servers /tmp/ext_ips | tee /tmp/workload_servers_ips
+outdir="$(mktemp -d)"
 
-  if [ -s $ovn_migration_dir/server_ipv6_addresses ] && [ "$validate_ipv6" == "True" ]; then
-    for server_ipv6 in `comm -12 <(sort $ovn_migration_dir/server_ipv6_addresses) <(sort /tmp/ip_addresses)`; do
-      echo Pinging $server_ipv6
-      ping6 -c 3 $server_ipv6
-      [ $? -ne 0 ] && echo FAIL: Server ipv6 $server_ipv6 is not responding. && return 1
-      echo Ping6 test succeeded
-      echo Testing ssh to $server_ipv6
-      timeout 20 ssh -6 -i ~/.ssh/$key -o StrictHostKeyChecking=no \
-      -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ipv6 date
-      if [ $? -ne 0 ]; then
-          echo "FAIL: VM address $server_ipv6 is not accessible via ssh."
-          return 1
-      fi
-      echo SSH test over IPv6 succeeded
-    done
+print_ips(){
+  servers="$1"
+  for server in $servers; do
+    ip=$(grep $server /tmp/workload_servers_ips | awk '{print $4}')
+    (print_int_ips $ip $outdir/$server) &
+  done
+  wait
+  for server in $servers; do
+    cat $outdir/$server >> $summary_file
+  done
+}
+
+print_int_ips(){
+  ext_ip=$1
+  output_file=$2
+  echo "$ip " >> $output_file
+  ping -q -c $ping_requests $ext_ip > /dev/null
+  [ $? -ne 0 ] && echo "$ext_ip is not responding. Can't access internal ip addresses"  >> $output_file && return
+  timeout 10 ssh -n -i ~/.ssh/$key $server_user_name@$ext_ip "PATH=\$PATH:/sbin  ip -br addr | grep -v lo | sed 's/fe80.*//'" >> $output_file
+  echo >> $output_file
+}
+
+echo Normal servers for migration >> $summary_file
+print_ips "$normal_servers_for_migration"
+echo Normal servers for reboot >> $summary_file
+print_ips "$normal_servers_for_reboot"
+
+echo Trunk servers for migration >> $summary_file
+print_ips "$trunk_servers_for_migration"
+echo Trunk servers for reboot >> $summary_file
+print_ips "$trunk_servers_for_reboot"
+
+
+if [ "$resources_type" == "granular_poc" ]; then
+  mon_server_ips=""
+  monitoring_servers=$(echo $servers_no_trunks | awk '{$1="";$NF="";print}' | awk '{$1=$1;print}')
+  grep $(echo " $monitoring_servers" | sed 's/\ /\ -e\ /g') /tmp/workload_servers_ips | tee /tmp/monitoring_servers
+fi
+
+check_internal_network_ping(){
+  local external_ip=$1
+  local internal_ip=$2
+  local output_file=$3
+  timeout 10 ssh -n -i ~/.ssh/$key $server_user_name@$external_ip ping -W 1 -c $ping_requests $internal_ip >> $output_file
+  if [ $? -ne 0 ]; then
+    echo "INFO: ping $internal_ip via $external_ip = failed"  >> $output_file
+    return 1
   else
-    if ! ([ "$resources_type" == "normal_ext" ] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext"  ]]); then
-      echo FAIL: File with server ipv6 addresses does not exist && return 1
+    echo "INFO: ping $internal_ip via $external_ip = passed"  >> $output_file
+  fi
+}
+
+run_selected_operation_on_internal_ips(){
+  local operation=$1
+  local int_ips="$2"
+  local ext_ip=$3
+  for ip in $ips; do
+    case $operation in
+      run_ping)
+        check_internal_network_ping $ext_ip $ip $outdir/${ext_ip}_${ip}
+        ;;
+      get_ping_results)
+        cat $outdir/${ext_ip}_${ip}
+        grep INFO $outdir/${ext_ip}_${ip} >> $summary_file
+        ;;
+      check_ping_results)
+        grep INFO.*failed $outdir/${ext_ip}_${ip}
+        if [ $? -eq 0 ]; then
+          echo "Connectivity issue with $ip detected"
+          return 1
+        fi
+        ;;
+      *)
+        echo Operation not supported
+        ;;
+    esac
+  done
+  [ "$operation" == "get_ping_results" ] && echo >> $summary_file
+}
+
+run_checks_on_internal_ips(){
+  local ips="$1"
+  local ext_ip=$2
+  local res=0
+  for operation in 'run_ping' 'get_ping_results' 'check_ping_results'; do
+    run_selected_operation_on_internal_ips $operation "$ips" $ext_ip
+    if [ $? -ne 0 ]; then
+      res=1
+    fi
+  done
+  return $res
+}
+
+run_granular_poc_internal_ports_checks(){
+  local res=0
+  if [ "$1" == "status_only" ]; then
+    while read line; do
+      ext_ip=$(echo $line | cut -d' ' -f 1)
+      ips=$(echo $line | cut -d' ' -f 2- )
+      run_checks_on_internal_ips "$ips" $ext_ip
+    done < <(cat $ovn_migration_dir/zone*ips)
+  else
+    ext_ip=$(grep $server /tmp/workload_servers_ips | awk '{print $4}')
+    ips=$(cat $ovn_migration_dir/zone*_ips | grep $ext_ip | cut -d' ' -f 2-)
+    echo
+    echo "IPS=$ips"
+    echo
+    run_checks_on_internal_ips "$ips" $ext_ip
+    if [ $? -ne 0 ]; then
+      res=1
+    fi
+  fi
+  return $res
+}
+
+run_other_internal_ports_checks(){
+  local res=0
+  if [ "$1" == "status_only" ]; then
+    ext_ips=$(cat $ovn_migration_dir/trunk_vms_fips)
+  else
+    ext_ips=$(grep $server /tmp/workload_servers_ips | awk '{print $4}')
+    grep $ext_ips  $ovn_migration_dir/trunk_vms_fips
+    if [ $? -ne 0 ]; then
+      echo No internal ports on this VM
+      return 0
+    fi
+  fi
+  for ext_ip in $ext_ips; do
+    peer_ip=$(timeout 10 ssh -i ~/.ssh/$key $server_user_name@$ext_ip ls ping*output | sed 's/ping_\(.*\)_output/\1/')
+    if [ "$peer_ip" == "" ]; then
+      echo IP: $ext_ip. Failed to retrieve ip address of peer subport | tee -a $summary_file
+      echo | tee -a $summary_file
+      return 1
+    fi
+    ips=$peer_ip
+    run_checks_on_internal_ips "$ips" $ext_ip
+    if [ $? -ne 0 ]; then
+      res=1
+    fi
+  done
+  if [ "$1" == "status_only" ]; then
+    res=0
+  fi
+  return $res
+}
+
+validate_internal_ports_connectivity(){
+  echo Connectivity checks from internal network | tee -a $summary_file
+  outdir="$(mktemp -d)"
+  local res=0
+  if [ "$resources_type" == "granular_poc" ]; then
+    run_granular_poc_internal_ports_checks $1
+    res=$?
+  else
+    if [ -s $ovn_migration_dir/trunk_vms_fips ]; then
+      run_other_internal_ports_checks $1
+      res=$?
+    else
+      [[ "$resources_type" =~ "trunk" ]] && echo FAIL: trunk_vms_fips file not found.  && return 1
+    fi
+  fi
+  if [ $res -ne 0 ]; then
+    if [ "$1" == "pre-check" ]; then
+      echo "FAIL: server connectivity issues detected before the test. $debug_hint"
+    else
+      echo "FAIL: connectivity issue on internal network detected. $debug_hint"
     fi
   fi
   echo
+  return $res
+}
+
+check_external_network_ping(){
+  local external_ip=$1
+  local output_file=$2
+  local ip_version=$3
+  [ "$ip_version" == "ipv6" ] && ping_cmd=ping6 || ping_cmd=ping
+  $ping_cmd -c $ping_requests $external_ip >> $output_file
+  if [ $? -ne 0 ]; then
+    echo "INFO: ping to $external_ip = failed"  >> $output_file
+    return 1
+  else
+    echo "INFO: ping to $external_ip = passed"  >> $output_file
+  fi
+
+}
+
+check_external_network_ssh(){
+  local srv_ip=$1
+  local output_file=$2
+  local ip_version=$3
+  [ "$ip_version" == "ipv6" ] && ipv6=-6
+  echo Testing ssh to $srv_ip >> $output_file
+  timeout 20 ssh $ipv6 -n -i ~/.ssh/$key -o StrictHostKeyChecking=no \
+  -o UserKnownHostsFile=/dev/null  $server_user_name@$srv_ip date >> $output_file
+  if [ $? -ne 0 ]; then
+    echo "INFO: ssh to $srv_ip = failed"  >> $output_file
+    return 1
+  else
+    echo "INFO: ssh to $srv_ip = passed"  >> $output_file
+  fi
+}
+
+
+run_selected_operation_on_external_ips(){
+  local $operation=$1
+  local ips="$2"
+  local ip_version=$3
+  local res=0
+  for ip in $ips; do
+    echo
+    echo IP = $ip
+    echo operation=$operation
+    echo
+    case $operation in
+      run_ping)
+        (check_external_network_ping $ip $outdir/ping_${ip}_${ip_version} $ip_version) &
+        ;;
+      get_ping_results)
+        cat $outdir/ping_${ip}_${ip_version}
+        grep INFO $outdir/ping_${ip}_${ip_version} >> $summary_file
+	echo
+        ;;
+      check_ping_results)
+        grep INFO.*failed $outdir/ping_${ip}_${ip_version}
+        if [ $? -eq 0 ]; then
+          echo "Connectivity issue with $ip detected"
+          res=1
+        fi
+        ;;
+      run_ssh)
+	(check_external_network_ssh $ip $outdir/ssh_${ip}_${ip_version} $ip_version) &
+	;;
+      get_ssh_results)
+        cat $outdir/ssh_${ip}_${ip_version}
+        grep INFO $outdir/ssh_${ip}_${ip_version} >> $summary_file
+	echo
+        ;;
+      check_ssh_results)
+        grep INFO.*failed $outdir/ssh_${ip}_${ip_version}
+        if [ $? -eq 0 ]; then
+          echo "SSH issue with $ip detected"
+          res=1
+        fi
+        ;;
+      *)
+        echo Operation not supported
+        ;;
+    esac
+  done
+  if [ "$operation" == "run_ping" ] || [ "$operation" == "run_ssh" ]; then
+    wait
+  else
+    return $res
+  fi
+}
+
+run_checks_on_external_ips(){
+  local ips="$1"
+  local ip_version=$2
+  local res=0
+  for operation in 'run_ping' 'get_ping_results' 'check_ping_results' 'run_ssh' 'get_ssh_results' 'check_ssh_results'; do
+    run_selected_operation_on_external_ips $operation "$ips" $ip_version
+    if [ $? -ne 0 ]; then
+      res=1
+    fi
+    ([ "$operation" == "get_ping_results" ] || [ "$operation" == "get_ssh_results" ]) && echo >> $summary_file
+  done
+  return $res
+}
+
+run_granular_poc_external_ports_checks(){
+  local res=0
+  if [ "$1" == "status_only" ]; then
+    ips=$(cat $ovn_migration_dir/zone*_ips | awk '{print $1}')
+    run_checks_on_external_ips "$ips" ipv4
+    return 0
+  else
+    ips=$(grep $server /tmp/workload_servers_ips | awk '{print $4}')
+    run_checks_on_external_ips "$ips" ipv4
+    if [ $? -ne 0 ]; then
+      res=1
+    fi
+    return $res
+  fi
+}
+
+run_other_external_ports_checks(){
+  local res=0
+  if [ "$1" == "status_only" ]; then
+    if [ "$2" == "ipv6" ]; then
+      ip_version=ipv6
+      ips=$(cat $ovn_migration_dir/server_ipv6_addresses)
+    else
+      ip_version=ipv4
+      ips=$(cat $ovn_migration_dir/server_fips)
+    fi
+    run_checks_on_external_ips "$ips" $ip_version
+    return 0
+  else
+    if [ "$2" == "ipv6" ]; then
+      ip_version=ipv6
+      ips=$(openstack port list --device-id $server --network ovn-migration-net-pinger -f json -c 'Fixed IP Addresses' | jq '.[0]["Fixed IP Addresses"][1].ip_address' --raw-output)
+      if [ "$ips" == "null" ]; then
+        echo Server does not have IPv6 address for testing
+	return 0
+      fi
+    else
+      ip_version=ipv4
+      ips=$(grep $server /tmp/workload_servers_ips | awk '{print $4}')
+    fi
+    run_checks_on_external_ips "$ips" $ip_version
+    if [ $? -ne 0 ]; then
+      res=1
+    fi
+    return $res
+  fi
+}
+
+validate_external_ports_connectivity(){
+  outdir="$(mktemp -d)"
+  local res=0
+  echo Connectivity checks from external network | tee -a $summary_file
+  if [ "$resources_type" == "granular_poc" ]; then
+    run_granular_poc_external_ports_checks $1
+    res=$?
+    echo
+  else
+    if [ -s $ovn_migration_dir/server_fips ]; then
+      run_other_external_ports_checks $1
+      res=$?
+    else
+      echo FAIL: File with server fips does not exist && return 1
+    fi
+    if [ -s $ovn_migration_dir/server_ipv6_addresses ]; then
+      if [ "$validate_ipv6" == "True" ]  ; then
+        run_other_external_ports_checks $1 ipv6
+        res=$?
+      fi
+    else
+      if ! ([ "$resources_type" == "normal_ext" ] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext"  ]]); then
+        echo FAIL: File with server ipv6 addresses does not exist && return 1
+      fi
+    fi
+  fi
+
+  if [ $res -ne 0 ]; then
+    if [ "$1" == "pre-check" ]; then
+      echo "FAIL: server connectivity issues detected before the test. $debug_hint"
+    else
+      # TODO maybe we could collect all issues in some separate file and cat it here
+      echo "FAIL: connectivity issue on external network detected. $debug_hint"
+    fi
+  fi
+  echo
+  return $res
 }
 
 check_nic(){
@@ -100,7 +421,7 @@ check_nic(){
   echo NIC short ID = $nic_id
   for node in $(cat /tmp/nodes_data | awk '{print $1}'); do
     echo node = $node
-    nics=$(timeout 10 ssh -i ~/.ssh/$key $SSH_USER@${node_ips[$node]} ip addr | grep -v '^\ ' | cut -d ' ' -f 2)
+    nics=$(timeout 10 ssh -i ~/.ssh/$key $SSH_USER@${node_ips[$node]} "PATH=\$PATH:/sbin ip -br addr | awk '{print \$1}'")
     [ "$nics" == "" ] && echo FAIL: Can not retrieve NICs from node $node && return 1
     for nic in $nics; do
         if [[ "$nic" =~ $nic_id ]]; then
@@ -137,6 +458,58 @@ validate_leftovers_cleanup(){
   done
 }
 
+start_vm_ext_downtime_check(){
+  port=$(openstack port list --device-id $server --network $public_network -c ID -f value )
+  ip=$(openstack port show $port -c fixed_ips -f json | jq '.fixed_ips[0].ip_address' | tr -d '"' )
+  echo Starting pinger to $ip to monitor downtime
+  pid=$(ping -q -s1 $ip >/tmp/$ip 2>&1 & echo $!)
+}
+
+stop_vm_ext_downtime_check(){
+  echo Stopping pinger to $ip
+  kill -3 $pid
+  sleep 1
+  echo Measured VM downtime from ext network during VM migration >> $summary_file
+  cat /tmp/$ip >> $summary_file
+  kill $pid
+  sleep 1
+}
+
+start_vm_int_downtime_check(){
+  int_ips=$(timeout 10 ssh -n -i ~/.ssh/$key $server_user_name@$ip "PATH=\$PATH:/sbin ip -br addr | grep -v lo | sed 's/fe80.*//'" | sed '1d' | awk '{print $3}' | cut -d'/' -f1)
+  pids=""
+  OUT="$(mktemp)"
+  for int_ip in $int_ips; do
+    suitable_mon_servers_by_int_ips=$(cat $ovn_migration_dir/zone*ips | grep $int_ip | cut -d' ' -f1 | sort)
+    # We should select a server from other compute
+    suitable_mon_servers_by_host=$(grep -v $host /tmp/monitoring_servers | awk '{print $4}' | sort)
+    mon_server=$(comm -12 <(echo "$suitable_mon_servers_by_int_ips") <(echo "$suitable_mon_servers_by_host") | head -n 1)
+    if [ "$mon_server" == "" ]; then
+      echo "Can't find suitable monitoring server matching all criteria, i.e. ip and hosts, choosing only according to ip"
+      mon_server=$(echo $suitable_mon_servers_by_int_ips | awk '{print $1}')
+    fi
+    echo Starting pinger to $int_ip via $mon_server to monitor internal network downtime
+    p_id=$(timeout 10 ssh -n -i ~/.ssh/$key $server_user_name@$mon_server "ping -q -s1 $int_ip >/tmp/$int_ip 2>&1 & echo \$!")
+    [ "$pids" == "" ] && pids="$p_id" || pids="$pids $p_id"
+    echo "$int_ip $mon_server $p_id" >> $OUT
+  done
+}
+
+stop_vm_int_downtime_check(){
+  for int_ip in $int_ips; do
+    mon_server=$(grep $int_ip $OUT | cut -d' ' -f 2)
+    p_id=$(grep $int_ip $OUT | cut -d' ' -f 3)
+    echo Getting stats from pinger to $int_ip via $mon_server
+    timeout 10 ssh -n -i ~/.ssh/$key $server_user_name@$mon_server "kill -3 $p_id"
+    sleep 1
+    echo Measured VM downtime from int network, $int_ip via $mon_server, during VM migration >> $summary_file
+    timeout 10 ssh -n -i ~/.ssh/$key $server_user_name@$mon_server "cat /tmp/$int_ip" >> $summary_file
+    echo Stopping pinger with pid $p_id
+    timeout 10 ssh -n -i ~/.ssh/$key $server_user_name@$mon_server "kill $p_id"
+    sleep 1
+  done
+}
+
 validate_vm_migration(){
   if [ "$1" == "live" ]; then
     test_name=$(echo ${FUNCNAME[1]} | sed 's/test_/test_live_/')
@@ -148,8 +521,16 @@ validate_vm_migration(){
   [ "$servers_for_migration" == "" ] && echo SKIPPED: No servers suitable for the test && return
   for server in $servers_for_migration; do
     echo server id = $server
+    echo Status of server $server connectivity before VM migration test >> $summary_file
+    validate_external_ports_connectivity pre-check || return
+    validate_internal_ports_connectivity pre-check || return
     host=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
     echo host = $host
+    if [ "$resources_type" == "granular_poc" ] && [ "$ping_during_vm_migration" == "True" ] ; then
+      echo >> $summary_file
+      start_vm_ext_downtime_check
+      start_vm_int_downtime_check
+    fi
     echo execute vm migration command
     timeout 120 openstack server migrate $server $extra_param --wait
     host_new=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
@@ -163,12 +544,26 @@ validate_vm_migration(){
     fi
     [ "$status" != "ACTIVE" ] && echo FAIL: Server $server status is not ACTIVE, actual status is $status && return
     echo Server migrated successfully from $host to $host_new
-    echo Wait 40 seconds before starting validations to make sure all is ready
-    sleep 40
-    (validate_vms_connectivity && validate_trunk_subports_connectivity && validate_leftovers_cleanup) || return
+    if [ "$resources_type" == "granular_poc" ] && [ "$ping_during_vm_migration" == "True" ] ; then
+      stop_vm_ext_downtime_check
+      stop_vm_int_downtime_check
+      echo >> $summary_file
+    fi
+    echo Overall connectivity status after VM migration test >> $summary_file
+    validate_external_ports_connectivity status_only
+    validate_internal_ports_connectivity status_only
+    echo Status of server $server connectivity after VM migration test >> $summary_file
+    validate_external_ports_connectivity post-check || return
+    validate_internal_ports_connectivity post-check || return
+    validate_leftovers_cleanup || return
+
   done
   echo PASS
 }
+
+echo Overall connectivity status before all workload tests >> $summary_file
+validate_external_ports_connectivity status_only
+validate_internal_ports_connectivity status_only
 
 test_vm_migration(){
   servers_for_migration=$normal_servers_for_migration
@@ -206,6 +601,9 @@ validate_vm_reboot(){
     start_status=$(openstack server show -c status -f value $server)
     echo starting status = $start_status
     [ "$start_status" != "ACTIVE" ] && echo FAIL: Starting VM status is not ACTIVE. && return
+    echo Status of server $server connectivity before VM reboot test >> $summary_file
+    validate_external_ports_connectivity pre-check || return
+    validate_internal_ports_connectivity pre-check || return
     echo execute server stop command
     openstack server stop $server
     sleep 5
@@ -239,9 +637,15 @@ validate_vm_reboot(){
     final_status=$(openstack server show -c status -f value $server)
     echo final status = $final_status
     [ "$final_status" != "ACTIVE" ] && echo "FAIL: Final VM status is not ACTIVE." && return
+    # TODO add waiting loop
     echo Wait 40 seconds before staring validations to make sure all is ready
     sleep 40
-    (validate_vms_connectivity && validate_trunk_subports_connectivity) || return
+    echo Overall connectivity status after VM stop/start test >> $summary_file
+    validate_external_ports_connectivity status_only
+    validate_internal_ports_connectivity status_only
+    echo Status of server $server connectivity after VM stop/start test >> $summary_file
+    validate_external_ports_connectivity post-check || return
+    validate_internal_ports_connectivity post-check || return
   done
   echo PASS
 }

@@ -217,6 +217,11 @@ subparsers:
                       help: Whether to reboot workload VMs after migration to OVN and check connectivity.
                       default: True
 
+                  ping_during_vm_migration:
+                      type: Bool
+                      help: Whether to ping VM during the VM live migration
+                      default: True
+
                   fetch_junit_xml:
                       type: Bool
                       help: Whether to fetch junit xml with validation results.
