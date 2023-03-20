@@ -60,6 +60,7 @@
       regexp: "{{ item }}"
   with_items:
       - "^.*openstack-tripleo-heat-templates.*ovs.*yaml"
+      - "^.*floating_ip_port_forwarding.yaml"
   when: infrared_deployment|bool
 
 - name: Set the neutron-ovn-dvr-ha.yaml file path if dvr
@@ -133,6 +134,13 @@
       - infrared_deployment|bool
       - is_sriov|bool
       - is_after_ffu|bool
+
+- name: Add disable-container-manage-clean-orphans environment file for batched migration
+  lineinfile:
+      dest: "{{ overcloud_deploy_ovn_script }}"
+      line: "-e /usr/share/openstack-tripleo-heat-templates/environments/disable-container-manage-clean-orphans.yaml \\"
+      insertbefore: "^.*ovn-extras.*"
+  when: install.batched|bool
 
 - name: Set current bridge mappings into OVN extra configs file
   shell: |
