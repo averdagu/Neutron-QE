@@ -234,6 +234,11 @@ subparsers:
                       help: Whether to migrate to OVN. The option allows to run some configuration scenarios without performing the migration itself.
                       default: True
 
+                  dump_objects:
+                      type: Bool
+                      help: Whether to dump objects before and after migration
+                      default: True
+
                   batched:
                       type: Bool
                       help: Whether to do migration/revert in batches.
