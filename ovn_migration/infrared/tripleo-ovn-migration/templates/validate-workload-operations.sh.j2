@@ -203,6 +203,7 @@ run_other_internal_ports_checks(){
     grep $ext_ips  $ovn_migration_dir/trunk_vms_fips
     if [ $? -ne 0 ]; then
       echo No internal ports that should be tested on this VM | tee -a >> $summary_file
+      echo | tee -a >> $summary_file
       return 0
     fi
   fi
@@ -243,6 +244,8 @@ validate_internal_ports_connectivity(){
   if [ $res -ne 0 ]; then
     if [ "$1" == "pre-check" ]; then
       echo "FAIL: server connectivity issues detected before the test. $debug_hint"
+    elif [ "$1" == "post-check" ]; then
+      echo "FAIL: server connectivity issues detected after the test. $debug_hint"
     else
       echo "WARN: connectivity issue on internal network detected. $debug_hint"
     fi
@@ -428,8 +431,9 @@ validate_external_ports_connectivity(){
   if [ $res -ne 0 ]; then
     if [ "$1" == "pre-check" ]; then
       echo "FAIL: server connectivity issues detected before the test. $debug_hint"
+    elif [ "$1" == "post-check" ]; then
+      echo "FAIL: server connectivity issues detected after the test. $debug_hint"
     else
-      # TODO maybe we could collect all issues in some separate file and cat it here
       echo "WARN: connectivity issue on external network detected. $debug_hint"
     fi
   fi
