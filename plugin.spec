@@ -205,7 +205,7 @@ subparsers:
                   validate_vm_live_migration:
                       type: Bool
                       help: Whether to live migrate workload VMs after migration to OVN and check connectivity.
-                      default: True
+                      default: False
 
                   validate_vm_migration:
                       type: Bool
@@ -215,7 +215,7 @@ subparsers:
                   validate_vm_reboot:
                       type: Bool
                       help: Whether to reboot workload VMs after migration to OVN and check connectivity.
-                      default: True
+                      default: False
 
                   ping_during_vm_migration:
                       type: Bool
