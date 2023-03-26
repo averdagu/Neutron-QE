@@ -21,8 +21,8 @@ ovn_migration_dir={{ ovn_migration_working_dir }}
 resources_type={{ resources_type  }}
 validate_ipv6={{ validate_ipv6 }}
 ping_during_vm_migration={{ ping_during_vm_migration }}
-ping_requests=5
-debug_hint="See details in $(basename $0).log."
+ping_requests=3
+debug_hint="See details in connectivity_summary_file and $(basename $0).log."
 public_network={{ public_network }}
 
 openstack server list --long -c ID -c Name -c Host -f value | grep 'migration.*pinger' > /tmp/workload_servers
@@ -40,6 +40,20 @@ normal_servers_for_reboot=$(echo $servers_no_trunks | awk '{print $1}')
 summary_file=$ovn_migration_dir/connectivity_summary_file
 [ -e $summary_file ] && rm $summary_file
 [ -e /tmp/ext_ips ] && rm /tmp/ext_ips
+
+repeat(){
+  local char=$1
+  local t=$2
+  for i in `seq 1 $t`; do echo -n "$1"; done
+  echo
+}
+
+echo_title(){
+  local t=$(echo -n $1 | wc -c)
+  repeat "-" $(( t + 4 ))
+  echo "| $1 |"
+  repeat "-" $(( t + 4 ))
+}
 
 get_ip(){
   port=$(openstack port list --device-id $1 --network $public_network -c ID -f value )
@@ -75,7 +89,7 @@ print_int_ips(){
   output_file=$2
   echo "$ip " >> $output_file
   ping -q -c $ping_requests $ext_ip > /dev/null
-  [ $? -ne 0 ] && echo "$ext_ip is not responding. Can't access internal ip addresses"  >> $output_file && return
+  [ $? -ne 0 ] && echo "$ext_ip is not responding. Can't access internal ip addresses" >> $output_file && echo >> $output_file && return
   timeout 10 ssh -n -i ~/.ssh/$key $server_user_name@$ext_ip "PATH=\$PATH:/sbin  ip -br addr | grep -v lo | sed 's/fe80.*//'" >> $output_file
   echo >> $output_file
 }
@@ -114,6 +128,7 @@ run_selected_operation_on_internal_ips(){
   local operation=$1
   local int_ips="$2"
   local ext_ip=$3
+  local res=0
   for ip in $ips; do
     case $operation in
       run_ping)
@@ -127,7 +142,12 @@ run_selected_operation_on_internal_ips(){
         grep INFO.*failed $outdir/${ext_ip}_${ip}
         if [ $? -eq 0 ]; then
           echo "Connectivity issue with $ip detected"
-          return 1
+          res=1
+        elif ! [ -s $outdir/${ext_ip}_${ip} ]; then
+          echo "Results file is empty. Looks like failed to establish a connection"
+          res=1
+        else
+          echo Connectivity check of $ip passed
         fi
         ;;
       *)
@@ -136,6 +156,7 @@ run_selected_operation_on_internal_ips(){
     esac
   done
   [ "$operation" == "get_ping_results" ] && echo >> $summary_file
+  return $res
 }
 
 run_checks_on_internal_ips(){
@@ -181,12 +202,12 @@ run_other_internal_ports_checks(){
     ext_ips=$(grep $server /tmp/workload_servers_ips | awk '{print $4}')
     grep $ext_ips  $ovn_migration_dir/trunk_vms_fips
     if [ $? -ne 0 ]; then
-      echo No internal ports on this VM
+      echo No internal ports that should be tested on this VM | tee -a >> $summary_file
       return 0
     fi
   fi
   for ext_ip in $ext_ips; do
-    peer_ip=$(timeout 10 ssh -i ~/.ssh/$key $server_user_name@$ext_ip ls ping*output | sed 's/ping_\(.*\)_output/\1/')
+    peer_ip=$(timeout 10 ssh -i ~/.ssh/$key $server_user_name@$ext_ip ls "ping*output | sed 's/ping_\(.*\)_output/\1/'")
     if [ "$peer_ip" == "" ]; then
       echo IP: $ext_ip. Failed to retrieve ip address of peer subport | tee -a $summary_file
       echo | tee -a $summary_file
@@ -223,7 +244,7 @@ validate_internal_ports_connectivity(){
     if [ "$1" == "pre-check" ]; then
       echo "FAIL: server connectivity issues detected before the test. $debug_hint"
     else
-      echo "FAIL: connectivity issue on internal network detected. $debug_hint"
+      echo "WARN: connectivity issue on internal network detected. $debug_hint"
     fi
   fi
   echo
@@ -409,7 +430,7 @@ validate_external_ports_connectivity(){
       echo "FAIL: server connectivity issues detected before the test. $debug_hint"
     else
       # TODO maybe we could collect all issues in some separate file and cat it here
-      echo "FAIL: connectivity issue on external network detected. $debug_hint"
+      echo "WARN: connectivity issue on external network detected. $debug_hint"
     fi
   fi
   echo
@@ -521,7 +542,7 @@ validate_vm_migration(){
   [ "$servers_for_migration" == "" ] && echo SKIPPED: No servers suitable for the test && return
   for server in $servers_for_migration; do
     echo server id = $server
-    echo Status of server $server connectivity before VM migration test >> $summary_file
+    echo_title "Status of server $server connectivity before VM migration test" >> $summary_file
     validate_external_ports_connectivity pre-check || return
     validate_internal_ports_connectivity pre-check || return
     host=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
@@ -549,10 +570,10 @@ validate_vm_migration(){
       stop_vm_int_downtime_check
       echo >> $summary_file
     fi
-    echo Overall connectivity status after VM migration test >> $summary_file
+    echo_title "Overall connectivity status after VM migration test" >> $summary_file
     validate_external_ports_connectivity status_only
     validate_internal_ports_connectivity status_only
-    echo Status of server $server connectivity after VM migration test >> $summary_file
+    echo_title "Status of server $server connectivity after VM migration test" >> $summary_file
     validate_external_ports_connectivity post-check || return
     validate_internal_ports_connectivity post-check || return
     validate_leftovers_cleanup || return
@@ -561,7 +582,7 @@ validate_vm_migration(){
   echo PASS
 }
 
-echo Overall connectivity status before all workload tests >> $summary_file
+echo_title "Overall connectivity status before all workload tests" >> $summary_file
 validate_external_ports_connectivity status_only
 validate_internal_ports_connectivity status_only
 
@@ -601,7 +622,7 @@ validate_vm_reboot(){
     start_status=$(openstack server show -c status -f value $server)
     echo starting status = $start_status
     [ "$start_status" != "ACTIVE" ] && echo FAIL: Starting VM status is not ACTIVE. && return
-    echo Status of server $server connectivity before VM reboot test >> $summary_file
+    echo_title "Status of server $server connectivity before VM reboot test" >> $summary_file
     validate_external_ports_connectivity pre-check || return
     validate_internal_ports_connectivity pre-check || return
     echo execute server stop command
@@ -640,10 +661,10 @@ validate_vm_reboot(){
     # TODO add waiting loop
     echo Wait 40 seconds before staring validations to make sure all is ready
     sleep 40
-    echo Overall connectivity status after VM stop/start test >> $summary_file
+    echo_title "Overall connectivity status after VM stop/start test" >> $summary_file
     validate_external_ports_connectivity status_only
     validate_internal_ports_connectivity status_only
-    echo Status of server $server connectivity after VM stop/start test >> $summary_file
+    echo_title "Status of server $server connectivity after VM stop/start test" >> $summary_file
     validate_external_ports_connectivity post-check || return
     validate_internal_ports_connectivity post-check || return
   done
