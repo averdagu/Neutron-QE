@@ -410,7 +410,7 @@
                   git clone "https://code.engineering.redhat.com/gerrit/neutron" ~/neutron
                   pushd ~/neutron
                   git checkout -b rhos-17.1-trunk-patches origin/rhos-17.1-trunk-patches
-                  git fetch https://code.engineering.redhat.com/gerrit/neutron refs/changes/23/440623/8 && git checkout -b change-440623 FETCH_HEAD
+                  git fetch https://code.engineering.redhat.com/gerrit/neutron refs/changes/{{ install.batched_migration_patchset }} && git checkout -b batched_migration FETCH_HEAD
                   sudo mv /usr/bin/ovn_migration.sh /usr/bin/ovn_migration.sh.bak
                   sudo cp ~/neutron/tools/ovn_migration/tripleo_environment/ovn_migration.sh /usr/bin
                   sudo chmod +x /usr/bin/ovn_migration.sh
