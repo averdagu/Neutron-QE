@@ -42,3 +42,7 @@ done
 
 echo "</testsuite>" >> $outfile
 echo "</testsuites>" >> $outfile
+tests=$(grep '<testcase' $outfile | wc -l)
+failures=$(grep '<failure' $outfile | wc -l)
+skipped=$(grep '<skipped' $outfile | wc -l)
+sed -i "s/\(<testsuite\ .*\)>/\1 tests=\"$tests\" failures=\"$failures\" skipped=\"$skipped\">/" $outfile
