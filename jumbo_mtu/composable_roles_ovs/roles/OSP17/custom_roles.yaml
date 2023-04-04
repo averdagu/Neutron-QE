@@ -143,6 +143,7 @@
     - OS::TripleO::Services::CephMds
     - OS::TripleO::Services::CephMgr
     - OS::TripleO::Services::CephMon
+    - OS::TripleO::Services::CephNfs
     - OS::TripleO::Services::CephRbdMirror
     - OS::TripleO::Services::CephRgw
     - OS::TripleO::Services::CinderApi
@@ -178,6 +179,7 @@
     - OS::TripleO::Services::ExternalSwiftProxy
     - OS::TripleO::Services::Frr
     - OS::TripleO::Services::GlanceApi
+    - OS::TripleO::Services::GlanceApiInternal
     - OS::TripleO::Services::GnocchiApi
     - OS::TripleO::Services::GnocchiMetricd
     - OS::TripleO::Services::GnocchiStatsd
@@ -202,6 +204,7 @@
     - OS::TripleO::Services::ManilaBackendCephFs
     - OS::TripleO::Services::ManilaBackendIsilon
     - OS::TripleO::Services::ManilaBackendNetapp
+    - OS::TripleO::Services::ManilaBackendPowerMax
     - OS::TripleO::Services::ManilaBackendUnity
     - OS::TripleO::Services::ManilaBackendVNX
     - OS::TripleO::Services::ManilaBackendVMAX
