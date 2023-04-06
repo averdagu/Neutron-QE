@@ -15,6 +15,7 @@
             flavor_to_use: "{{ install.flavor_name }}"
             server_user_name: "{{ install.server_user_name }}"
             resources_type: "{{ install.resources_type }}"
+            public_network: "{{ install.external_network }}"
             packet_loss_threshold: "{{ install.allowed_packet_loss }}"
             validate_ipv6: "{{ install.validate_ipv6 }}"
             validate_agents: "{{ install.validate_agents }}"
@@ -40,6 +41,7 @@
             flavor_to_use: "{{ flavor_name }}"
             server_user_name: "{{ server_user_name }}"
             resources_type: "{{ resources_type }}"
+            public_network: "{{ external_network }}"
             packet_loss_threshold: "{{ allowed_packet_loss }}"
             validate_ipv6: "{{ validate_ipv6 }}"
             validate_agents: "{{ validate_agents }}"
@@ -416,16 +418,6 @@
                   sudo chmod +x /usr/bin/ovn_migration.sh
                   popd
               when: install.batched|bool
-
-            - name: Set the public network name (infrared deployment)
-              set_fact:
-                  public_network: "{{ install.external_network }}"
-              when: install is defined
-
-            - name: Set the public network name (Tripleo deployment)
-              set_fact:
-                  public_network: "{{ external_network }}"
-              when: install is not defined
 
             - name: Create ovn migration script
               template:
