@@ -439,6 +439,14 @@
                   > {{ ovn_migration_working_dir }}/dumps/dump-objects_initial_state.sh.log 2>&1
               when: install.dump_objects|bool
 
+            - name: Create backup when using updated ovn_migration.sh script (with batched support)
+              shell:
+                  set -o pipefail &&
+                  {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh backup > {{ ovn_migration_working_dir }}/create_backup.log 2>&1
+              when:
+                  - install.create_backup|bool
+                  - install.batched|bool
+
             - name: Generate inventory file for ovn migration
               shell:
                   set -o pipefail &&
