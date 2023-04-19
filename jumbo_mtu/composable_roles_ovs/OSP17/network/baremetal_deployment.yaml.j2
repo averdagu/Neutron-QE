@@ -37,6 +37,7 @@
           /srv={{ (install.srv.volume.size|default(10)) }}GB
           /var=100%
 {% endif %}
+    - playbook: /home/stack/OSP17/playbooks/sssd_selinux_workaround.yaml
 - name: Compute
   count: {{ (install.compute|default({})).nodes|default(0) or groups.compute|default([])|length or (install.hybrid is defined)| ternary('1','0') }}
   hostname_format: compute-%index%
