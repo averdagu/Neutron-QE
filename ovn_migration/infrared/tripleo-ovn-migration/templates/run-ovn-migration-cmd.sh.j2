@@ -18,4 +18,4 @@ if [ "{{ install.batched }}" == "True" ]; then
   export ANSIBLE_DIR=/home/stack/neutron/tools/ovn_migration/tripleo_environment
   export OVERCLOUD_OVN_DEPLOY_SCRIPT=/home/stack/overcloud-deploy-ovn.sh
 fi
-/usr/bin/ovn_migration.sh $1
+/usr/bin/ovn_migration.sh "$@"
