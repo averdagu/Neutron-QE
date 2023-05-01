@@ -625,6 +625,7 @@
         when:
             - install.revert_to_ovs|bool
             - not install.sriov|bool
+            - install.fix_external_dhcp_ovs|bool
 
 - name: Configure static IP address on undercloud for post-revert tempest testing
   hosts: undercloud
@@ -640,6 +641,7 @@
         when:
             - install.revert_to_ovs|bool
             - not install.sriov|bool
+            - install.fix_external_dhcp_ovs|bool
 
 - name: Post migration
   hosts: undercloud

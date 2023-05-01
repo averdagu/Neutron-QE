@@ -294,6 +294,11 @@ subparsers:
                       help: Temporary workaround. Whether to inject a code that fixes node recovery issue caused by BZ2149586.
                       default: True
 
+                  fix_external_dhcp_ovs:
+                      type: Bool
+                      help: Whether to stop dhcp on hypervisor and configure static ip on undercloud. Can help to fix some tempest issues with VMs on external network with OVS
+                      default: False
+
             - title: Revert migration
               options:
                   revert_to_ovs:
