@@ -621,7 +621,7 @@
   tasks:
       - name: Stop DHCP server
         shell: |
-            ps aux | grep external | grep -v root | tr -s ' ' | cut -d ' ' -f 2 | xargs kill -15
+            ps aux | grep external | grep -v root | grep -v pts | awk '{print $2}' | xargs kill
         when:
             - install.revert_to_ovs|bool
             - not install.sriov|bool
