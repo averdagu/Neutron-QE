@@ -242,7 +242,7 @@ subparsers:
                   dump_objects:
                       type: Bool
                       help: Whether to dump objects before and after migration
-                      default: True
+                      default: False
 
                   batched:
                       type: Bool
