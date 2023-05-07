@@ -297,7 +297,7 @@ subparsers:
                   fix_external_dhcp_ovs:
                       type: Bool
                       help: Whether to stop dhcp on hypervisor and configure static ip on undercloud. Can help to fix some tempest issues with VMs on external network with OVS
-                      default: False
+                      default: True
 
             - title: Revert migration
               options:

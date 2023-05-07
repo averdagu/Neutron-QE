@@ -621,7 +621,10 @@
   tasks:
       - name: Stop DHCP server
         shell: |
-            ps aux | grep external | grep -v root | grep -v pts | awk '{print $2}' | xargs kill
+            procs=$(ps aux | grep external | grep -v root | grep dnsmasq | grep -v grep | awk '{print $2}')
+            for p in $procs; do
+              kill $p || true
+            done
         when:
             - install.revert_to_ovs|bool
             - not install.sriov|bool
