@@ -249,11 +249,6 @@ subparsers:
                       help: Whether to do migration/revert in batches.
                       default: False
 
-                  batched_migration_patchset:
-                      type: Value
-                      help: Temporary workaround. Refspec (e.g. 23/440623/8) from a WIP patch for batch migration
-                      default: '23/440623/4'
-
                   batches_config:
                       type: Value
                       help: URL with batches config. In case there is a need to override default one.
