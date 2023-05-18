@@ -154,7 +154,9 @@
             - name: Inject code to print workload VM console
               shell: |
                   sed -i "/exit\ 1/i server_id=\$(openstack server list -f value | grep \$server_ip | awk '{print \$1}')\nopenstack console log show \$server_id" {{ playbooks_path }}/roles/resources/create/templates/create-resources.sh.j2
-              when: install.print_vm_console_on_fail|bool
+              when:
+                  - install.print_vm_console_on_fail|bool
+                  - osp_major_version | int < 17
 
             - name: Disable pre-checks
               shell: |
