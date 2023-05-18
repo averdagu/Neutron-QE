@@ -69,3 +69,4 @@
         tuned_isolated_cores: '2-23'
         reboot_wait_timeout: 900
         nova_reserved_host_memory: 4096
+    - playbook: /home/stack/ospd-17-vlan-sriov-hybrid-ha-ovs-squad-titan13/playbooks/sssd_selinux_workaround.yaml
