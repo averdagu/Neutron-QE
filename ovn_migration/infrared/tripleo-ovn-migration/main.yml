@@ -184,6 +184,14 @@
                   - osp_major_version | int >= 17
                   - install.create_backup|bool
                   - install.fix_poolmetadatasize|bool
+
+            - name: Temporary workaround for inventory issue
+              shell: |
+                  sed -i "/backup()/a \ \ \ \ local inventory_file=\"\$OOO_WORKDIR/\$STACK_NAME/config-download/\$STACK_NAME/tripleo-ansible-inventory.yaml\"" /usr/bin/ovn_migration.sh
+              when:
+                  - osp_major_version | int >= 17
+                  - install.create_backup|bool
+                  - install.fix_inventory_for_backup|bool
         when: migrate|bool
 
 - name: Prepare for migration

@@ -320,3 +320,8 @@ subparsers:
                       type: Bool
                       help: Temporary workaround. Inject parameter to override controller group name, see https://bugzilla.redhat.com/show_bug.cgi?id=2158396
                       default: False
+
+                  fix_inventory_for_backup:
+                      type: Bool
+                      help: Temporary workaround. Inject a variable with inventory file, fix for https://bugzilla.redhat.com/show_bug.cgi?id=2208238
+                      default: False
