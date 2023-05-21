@@ -1,3 +1,7 @@
 #!/bin/bash
 
-ansible-playbook -vv {{ ovn_migration_working_dir }}/playbooks/revert.yml -i /home/stack/hosts_for_migration
+if [ "{{ install.batched }}" == "True"  ]; then
+  ansible-playbook -vv {{ playbooks_path }}/revert.yml -i /home/stack/hosts_for_migration
+else
+  ansible-playbook -vv {{ ovn_migration_working_dir }}/playbooks/revert.yml -i /home/stack/hosts_for_migration
+fi
