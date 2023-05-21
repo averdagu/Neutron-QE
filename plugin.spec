@@ -244,11 +244,6 @@ subparsers:
                       help: Whether to dump objects before and after migration
                       default: False
 
-                  batched:
-                      type: Bool
-                      help: Whether to do migration/revert in batches.
-                      default: False
-
                   batches_config:
                       type: Value
                       help: URL with batches config. In case there is a need to override default one.

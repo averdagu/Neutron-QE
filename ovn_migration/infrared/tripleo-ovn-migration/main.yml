@@ -144,6 +144,15 @@
       - set_fact:
             workload_script: "{{ playbooks_path }}/roles/resources/create/templates/create-resources.sh.j2"
 
+      - name: Check if code supports batched migration
+        shell: |
+            grep -q activate-ovn /usr/bin/ovn_migration.sh
+            [ "$?" -eq "0" ] && echo True || echo False
+        register: check_output
+
+      - set_fact:
+            batched_migration_support: "{{ check_output.stdout }}"
+
       - name: Apply workarounds
         block:
             - name: Apply workaround for flavor size
@@ -389,7 +398,7 @@
 
             - name: Copy the playbook files into ovn_migration working dir
               command: cp -rf {{ playbooks_path }} {{ ovn_migration_working_dir }}
-              when: not install.batched|bool
+              when: not batched_migration_support|bool
 
             - name: Fix controller group name for backup and restore
               shell: |
@@ -436,14 +445,14 @@
                   {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh backup > {{ ovn_migration_working_dir }}/create_backup.log 2>&1
               when:
                   - install.create_backup|bool
-                  - install.batched|bool
+                  - batched_migration_support|bool
 
             - name: Copy default batches config
               copy:
                   src: templates/batches_default_config
                   dest: /tmp/batches_config
               when:
-                  - install.batched|bool
+                  - batched_migration_support|bool
 
             - name: Append batches configuration
               shell: |
@@ -451,7 +460,7 @@
                   echo >> ~/hosts_for_migration
                   cat /tmp/batches_config >> ~/hosts_for_migration
               when:
-                  - install.batched|bool
+                  - batched_migration_support|bool
 
             - name: Download batched scenario tasks
               delegate_to: localhost
@@ -460,7 +469,7 @@
                   dest: "./batched_scenario_tasks.yml"
                   force: true
               when:
-                  - install.batched|bool
+                  - batched_migration_support|bool
                   - install.batched_scenario_tasks != ''
 
             - name: Set MTU T1
@@ -537,14 +546,14 @@
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh start-migration
                   > {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh.log 2>&1
-              when: not install.batched|bool
+              when: not batched_migration_support|bool
 
             - name: Start the migration process (batched)
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh install-ovn
                   > {{ ovn_migration_working_dir }}/install-ovn.sh.log 2>&1
-              when: install.batched|bool
+              when: batched_migration_support|bool
 
             - name: Activate OVN (batched, all_at_once)
               shell:
@@ -552,13 +561,13 @@
                   {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh activate-ovn
                   > {{ ovn_migration_working_dir }}/activate-ovn.sh.log 2>&1
               when:
-                  - install.batched|bool
+                  - batched_migration_support|bool
                   - install.batched_scenario_tasks == ''
 
             - name: Execute batched migration scenario tasks
               include_tasks: ./batched_scenario_tasks.yml
               when:
-                  - install.batched|bool
+                  - batched_migration_support|bool
                   - install.batched_scenario_tasks != ''
 
             - name: Cleanup OVS (batched)
@@ -566,7 +575,7 @@
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh cleanup-ovs
                   > {{ ovn_migration_working_dir }}/cleanup-ovs.sh.log 2>&1
-              when: install.batched|bool
+              when: batched_migration_support|bool
 
             - name: Run dumping objects script after migration to ovn
               shell:
