@@ -27,7 +27,7 @@
   lineinfile:
       dest: "{{ overcloud_deploy_ovs_script }}"
       line: "-e /home/stack/ovs-extra.yml \\"
-      insertbefore: "^--log-file.*"
+      insertbefore: ".*--log-file.*"
 
 - name: Add source stackrc
   shell: |
