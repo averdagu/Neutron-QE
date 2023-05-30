@@ -1,4 +1,5 @@
 #!/bin/bash
+[ -f /home/stack/containers-prepare-parameter-copy.yaml ] && CPP_YAML=/home/stack/containers-prepare-parameter-copy.yaml || CPP_YAML=/home/stack/containers-prepare-parameter.yaml
 
 openstack overcloud deploy \
 --timeout 240 \
@@ -15,7 +16,7 @@ openstack overcloud deploy \
 -e /home/stack/vlan_provider_network_ovn/roles/nodes-16.yaml \
 -e /home/stack/vlan_provider_network_ovn/ovn-extras.yaml \
 -e /home/stack/vlan_provider_network_ovn/l3_fip_qos.yaml \
--e /home/stack/containers-prepare-parameter.yaml \
+-e $CPP_YAML \
 -e /home/stack/vlan_provider_network_ovn/performance.yaml \
 -e /home/stack/vlan_provider_network_ovn/debug.yaml \
 -e /home/stack/vlan_provider_network_ovn/hostnames.yaml \
