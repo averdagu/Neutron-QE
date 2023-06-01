@@ -808,16 +808,6 @@
 
         when: not install.skip_validations|bool
 
-- name: Post-actions on compute nodes
-  hosts: compute
-  become: true
-  tasks:
-      - name: Restart openvswitch on compute nodes
-        service:
-            name: openvswitch
-            state: restarted
-        when: install.restart_openvswitch|bool
-
 - name: Cleanup
   hosts: undercloud
   tasks:

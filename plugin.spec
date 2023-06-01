@@ -289,11 +289,6 @@ subparsers:
                       help: Whether to stop dhcp on hypervisor and configure static ip on undercloud. Can help to fix some tempest issues with VMs on external network with OVS
                       default: True
 
-                  restart_openvswitch:
-                      type: Bool
-                      help: Whether to restart openvswitch on compute nodes after migration. For testing purposes.
-                      default: False
-
             - title: Revert migration
               options:
                   revert_to_ovs:
