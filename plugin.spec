@@ -306,6 +306,11 @@ subparsers:
                       help: A host where to save backup.
                       default: 192.168.24.1
 
+                  backup_migration_ctl_plane_cidrs:
+                      type: Value
+                      help: Control plane CIDRs for backup. Can contain more than one value, e.g. 192.168.25.0/25,10.0.1.1/30. See details in BZ#2158437
+                      default: ''
+
                   fix_subnet_for_backup:
                       type: Bool
                       help: Temporary workaround. Inject parameter to override default subnets, see https://bugzilla.redhat.com/show_bug.cgi?id=2158437

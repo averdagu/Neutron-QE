@@ -9,6 +9,7 @@ export OVERCLOUDRC_FILE={{ overcloudrc }}
 export VALIDATE_MIGRATION={{ create_validation_workload }}
 export CREATE_BACKUP={{ install.create_backup }}
 export BACKUP_MIGRATION_IP={{ install.backup_migration_ip }}
+[ "{{ install.backup_migration_ctl_plane_cidrs }}" != "" ] && export BACKUP_MIGRATION_CTL_PLANE_CIDRS={{ install.backup_migration_ctl_plane_cidrs }}
 if [ '{{ export_image }}' == 'True' ]; then
   export IMAGE_NAME={{ image_to_boot }}
   export FLAVOR_NAME={{ flavor_to_use }}
