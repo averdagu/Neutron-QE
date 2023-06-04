@@ -18,6 +18,7 @@ done < /tmp/nodes_data
 . {{ overcloudrc }}
 server_user_name={{ server_user_name }}
 ovn_migration_dir={{ ovn_migration_working_dir }}
+validations_dir={{ validations_dir }}
 resources_type={{ resources_type  }}
 validate_ipv6={{ validate_ipv6 }}
 ping_during_vm_migration={{ ping_during_vm_migration }}
@@ -37,7 +38,7 @@ normal_servers_for_reboot=$(echo $servers_no_trunks | awk '{print $1}')
 
 [ "{{ osp_major_version }}" -ge "17" ] && key=id_extra_keys || key=id_rsa
 
-summary_file=$ovn_migration_dir/connectivity_summary_file
+summary_file=$validations_dir/connectivity_summary_file
 [ -e $summary_file ] && rm $summary_file
 [ -e /tmp/ext_ips ] && rm /tmp/ext_ips
 
