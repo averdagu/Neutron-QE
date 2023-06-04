@@ -203,6 +203,60 @@
                   - install.fix_inventory_for_backup|bool
         when: migrate|bool
 
+- name: Install monitoring tool
+  hosts: openstack_nodes
+  become: true
+  tasks:
+      - name: Install collectd
+        block:
+            - name: Install packages
+              yum:
+                  name:
+                    - collectd
+                    - collectd-ping
+                  state: present
+
+            - name: Create collectd ping plugin configuration
+              shell: |
+                  [ -f /tmp/collectd_ping.conf ] && sudo rm -rf /tmp/collectd_ping.conf
+                  echo "LoadPlugin ping" >> /tmp/collectd_ping.conf
+                  hosts1=$(grep 'internalapi\|storage\|tenant' /etc/hosts | grep -v overcloud | awk '{print $3}' | sort | uniq)
+                  hosts2=$(grep overcloud /etc/hosts | grep -v "\#" | awk '{print $2}' | sort | uniq)
+                  echo "<Plugin ping>" >> /tmp/collectd_ping.conf
+                  for host in $hosts1 $hosts2; do
+                    echo "  Host \"$host\"" >> /tmp/collectd_ping.conf
+                  done
+                  echo "</Plugin>" >> /tmp/collectd_ping.conf
+
+            - name: Create collectd csv plugin configuration
+              shell: |
+                  [ -f /tmp/collectd_csv.conf ] && sudo rm -rf /tmp/collectd_csv.conf
+                  echo "LoadPlugin csv" >> /tmp/collectd_csv.conf
+                  echo "<Plugin csv>" >> /tmp/collectd_csv.conf
+                  echo "  DataDir \"/var/lib/collectd/csv\"" >> /tmp/collectd_csv.conf
+                  echo "  StoreRates false" >> /tmp/collectd_csv.conf
+                  echo "</Plugin>" >> /tmp/collectd_csv.conf
+
+            - name: Install collectd ping configuration on nodes
+              shell: |
+                  sshpass -p 'stack' timeout 10 scp -o StrictHostKeyChecking=no stack@{{ install.backup_migration_ip }}:/tmp/collectd_ping.conf /tmp
+                  sudo cp /tmp/collectd_ping.conf /etc/collectd.d/
+
+            - name: Install collectd csv configuration on nodes
+              shell: |
+                  sshpass -p 'stack' timeout 10 scp -o StrictHostKeyChecking=no stack@{{ install.backup_migration_ip }}:/tmp/collectd_csv.conf /tmp
+                  sudo cp /tmp/collectd_csv.conf /etc/collectd.d/
+
+            - name: Enable service collectd
+              service:
+                  name: collectd
+                  enabled: yes
+
+            - name: Start service collectd
+              service:
+                  name: collectd
+                  state: restarted
+
 - name: Prepare for migration
   hosts: undercloud
   tasks:
