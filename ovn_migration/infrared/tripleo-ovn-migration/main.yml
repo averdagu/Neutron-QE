@@ -247,6 +247,10 @@
                   sshpass -p 'stack' timeout 10 scp -o StrictHostKeyChecking=no stack@{{ install.backup_migration_ip }}:/tmp/collectd_csv.conf /tmp
                   sudo cp /tmp/collectd_csv.conf /etc/collectd.d/
 
+            - name: Set collectd interval
+              shell: |
+                  sudo sed -i "/^Include/i Interval 1" /etc/collectd.conf
+
             - name: Enable service collectd
               service:
                   name: collectd
