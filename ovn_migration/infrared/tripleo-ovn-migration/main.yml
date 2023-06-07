@@ -201,6 +201,11 @@
                   - osp_major_version | int >= 17
                   - install.create_backup|bool
                   - install.fix_inventory_for_backup|bool
+
+            - name: Apply temporary fix for notify-nova
+              shell: |
+                  sed -i "s/stdout')/stdout_lines') | flatten/" /usr/share/ansible/neutron-ovn-migration/playbooks/tasks/notify-nova.yml
+              when: install.fix_notify_nova|bool
         when: migrate|bool
 
 - name: Install monitoring tool

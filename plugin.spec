@@ -289,6 +289,11 @@ subparsers:
                       help: Whether to stop dhcp on hypervisor and configure static ip on undercloud. Can help to fix some tempest issues with VMs on external network with OVS
                       default: True
 
+                  fix_notify_nova:
+                      type: Bool
+                      help: Temporary workaround. Whether to apply fix from https://code.engineering.redhat.com/gerrit/c/neutron/+/443850
+                      default: False
+
             - title: Revert migration
               options:
                   revert_to_ovs:
