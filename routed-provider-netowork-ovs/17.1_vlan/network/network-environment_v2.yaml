@@ -1,0 +1,47 @@
+parameter_defaults:
+    BondInterfaceOvsOptions: bond_mode=active-backup
+    #Enable isolated metadata for provider networks
+    NeutronEnableIsolatedMetadata: 'True'
+    Compute0Parameters:
+        NeutronBridgeMappings:
+        - leaf0:br-ex
+    Compute1Parameters:
+        NeutronBridgeMappings:
+        - leaf1:br-ex
+    Compute2Parameters:
+        NeutronBridgeMappings:
+        - leaf2:br-ex
+    ControlPlaneSubnet: leaf0
+    Controller0Parameters:
+        NeutronBridgeMappings:
+        - leaf0:br-ex
+    DnsServers:
+    - 10.11.5.19
+    - 10.5.30.160
+    NeutronEnableDVR: 'false'
+    NeutronExternalNetworkBridge: ''
+    NeutronFlatNetworks: leaf0,leaf1,leaf2
+    NeutronNetworkType: vxlan
+    NeutronNetworkVLANRanges: leaf0:1:1000,leaf1:1:1000,leaf2:1:1000
+    NeutronTunnelTypes: vxlan
+    NovaComputeAvailabilityZone: az-central
+    NovaComputeLibvirtType: qemu
+    NtpServer:
+    - clock.redhat.com
+    - clock2.redhat.com
+    PythonInterpreter: /usr/bin/python3
+    RootStackName: overcloud
+    SELinuxMode: permissive
+
+    Compute0NetworkConfigTemplate: nics/compute0.j2
+    Compute1NetworkConfigTemplate: nics/compute1.j2
+    Compute2NetworkConfigTemplate: nics/compute2.j2
+    ControllerNetworkConfigTemplate: nics/controller0.j2
+resource_registry:
+    OS::TripleO::Services::Docker: OS::Heat::None
+    OS::TripleO::BlockStorage::Net::SoftwareConfig: OS::Heat::None
+    OS::TripleO::CephStorage::Net::SoftwareConfig: OS::Heat::None
+    OS::TripleO::Compute::Net::SoftwareConfig: OS::Heat::None
+    OS::TripleO::Controller::Net::SoftwareConfig: OS::Heat::None
+    OS::TripleO::ObjectStorage::Net::SoftwareConfig: OS::Heat::None
+
