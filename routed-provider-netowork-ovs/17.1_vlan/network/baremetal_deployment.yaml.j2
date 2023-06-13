@@ -1,0 +1,93 @@
+- name: Controller0
+  count: 3
+  defaults:
+    profile: control0
+    config_drive:
+      cloud_config:
+        # unique NFS ID
+        bootcmd:
+          - 'host_specific_id="$(hostname)-{{ deployment_unique_id }}"'
+          - 'echo "options nfs nfs4_unique_id=${host_specific_id}" >/etc/modprobe.d/nfsv4_id.conf'
+          - '[ -e /sys/module/nfs/parameters/nfs4_unique_id ] && echo -n ${host_specific_id} >/sys/module/nfs/parameters/nfs4_unique_id'
+    network_config:
+      default_route_network:
+      - External
+      template: /home/stack/17.1_vlan/network/nics/controller0{{ ('ipv6' in install.network.protocol) | ternary('-v6','') }}.j2
+    networks:
+    - network: ctlplane
+      vif: true
+    - network: storage
+      subnet: storage_subnet
+    - network: storage_mgmt
+      subnet: storage_mgmt_subnet
+    - network: internal_api
+      subnet: internal_api_subnet
+    - network: tenant
+      subnet: tenant_subnet
+    - network: external
+      subnet: external_subnet
+{# Workaround the rhbz#2066367 for the case where OSP17 is run on top of RHEL9 #}
+{% if install.version|default(undercloud_version)|openstack_release >= 17 and (install.storage|default({})).backend == 'lvm' %}
+  ansible_playbooks:
+    - playbook: /usr/share/ansible/tripleo-playbooks/cli-overcloud-node-growvols.yaml
+      extra_vars:
+        growvols_args: >
+          /=8GB
+          /tmp=1GB
+          /var/log=3GB
+          /var/log/audit=1GB
+          /home=1GB
+          /srv=10GB
+          /var=100%
+{% endif %}
+- name: Compute0
+  count: 1
+  defaults:
+    profile: compute0
+    network_config:
+      template: /home/stack/17.1_vlan/network/nics/compute0.j2
+    networks:
+    - network: ctlplane
+      vif: true
+    - network: storage
+      subnet: storage_subnet
+    - network: internal_api
+      subnet: internal_api_subnet
+    - network: tenant
+      subnet: tenant_subnet
+    - network: external
+      subnet: external_subnet
+- name: Compute1
+  count: 2
+  defaults:
+    profile: compute1
+    network_config:
+      template: /home/stack/17.1_vlan/network/nics/compute1.j2
+    networks:
+    - network: ctlplane
+      vif: true
+    - network: storage
+      subnet: storage_leaf1
+    - network: internal_api
+      subnet: internal_api_leaf1
+    - network: tenant
+      subnet: tenant_leaf1
+    - network: external
+      subnet: external_leaf1
+- name: Compute2
+  count: 1
+  defaults:
+    profile: compute2
+    network_config:
+      template: /home/stack/17.1_vlan/network/nics/compute2.j2
+    networks:
+    - network: ctlplane
+      vif: true
+    - network: storage
+      subnet: storage_leaf2
+    - network: internal_api
+      subnet: internal_api_leaf2
+    - network: tenant
+      subnet: tenant_leaf2
+    - network: external
+      subnet: external_leaf2
