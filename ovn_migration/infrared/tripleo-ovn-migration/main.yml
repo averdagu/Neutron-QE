@@ -266,6 +266,8 @@
                   name: collectd
                   state: restarted
 
+        when: install.run_collectd|bool
+
 - name: Prepare for migration
   hosts: undercloud
   tasks:

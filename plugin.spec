@@ -232,6 +232,11 @@ subparsers:
                       help: Whether to skip post-migration validations. This is useful if we plan to test migration revert.
                       default: False
 
+                  run_collectd:
+                      type: Bool
+                      help: Whether to install and run collectd
+                      default: False
+
             - title: Workarounds
               options:
                   migrate:
