@@ -210,7 +210,7 @@ subparsers:
                   validate_vm_migration:
                       type: Bool
                       help: Whether to migrate workload VMs (both, i.e. cold and live scenario) after migration to OVN and check connectivity.
-                      default: False
+                      default: True
 
                   validate_vm_reboot:
                       type: Bool

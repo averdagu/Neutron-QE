@@ -603,12 +603,6 @@ test_migration_vm_with_trunk(){
 }
 
 if [ "{{ validate_vm_migration }}" == "True" ]; then
-  test_vm_migration
-  test_vm_migration live
-  test_migration_vm_with_trunk
-  test_migration_vm_with_trunk live
-
-else
   if [ "{{ validate_vm_live_migration }}" == "True" ]; then
     test_vm_migration live
     test_migration_vm_with_trunk live
