@@ -20,12 +20,10 @@ check_if_pinger_stopped(){
 }
 
 validate(){
-    packets_total=$( grep 'packet loss' $1 | cut -d' ' -f 1 )
-    packets_received=$( grep 'packet loss' $1 | cut -d' ' -f 4 )
-    ping_result=$(( packets_total - packets_received ))
+    ping_result=$(python {{ ovn_migration_temp_dir }}/get_longest_continuous_downtime.py $file | awk '{print $1}')
 
     if [ $ping_result -gt $packet_loss_threshold ]; then
-        echo "FAIL: $1: Ping loss higher than $packet_loss_threshold packets detected ($ping_result packets)"
+        echo "FAIL: $1: Continuous ping loss higher than $packet_loss_threshold packets detected ($ping_result packets)"
         exit
     fi
     echo "$1: Passed validation"

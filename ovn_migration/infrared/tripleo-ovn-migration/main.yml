@@ -73,7 +73,7 @@
             rhel_repo_file_name: "{{ rhel_repo_file.stdout }}"
             cacheable: yes
 
-- name: Set repos on controllers in order to be able to deploy a backup tool
+- name: Set repos on controllers in order to be able to deploy extra tools
   hosts: controller
   tasks:
       - name: Set rhel repo on controllers
@@ -83,7 +83,6 @@
             if [ ! -s /etc/yum.repos.d/$repo_file ]; then
             sudo cp /tmp/$repo_file /etc/yum.repos.d/
             fi
-        when: install.create_backup|bool
 
 - name: Install migration tool
   hosts: undercloud
