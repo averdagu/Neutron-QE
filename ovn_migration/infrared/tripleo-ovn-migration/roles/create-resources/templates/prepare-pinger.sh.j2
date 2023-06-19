@@ -3,13 +3,16 @@
 set -x
 
 echo "creating virtual environment in /home/stack/.ovn_migration_pinger_venv"
-python3 -m venv /home/stack/.ovn_migration_pinger_venv
+
+[ ! -e /home/stack/.ovn_migration_pinger_venv ] &&  python3 -m venv /home/stack/.ovn_migration_pinger_venv
 source /home/stack/.ovn_migration_pinger_venv/bin/activate
 pip install --upgrade pip
 pip install sh
 pip install netaddr
 
-cat > {{ ovn_migration_temp_dir }}/pinger.py <<-EOF
+[ -s {{ ovn_migration_working_dir }}/pinger.py ] && mv {{ ovn_migration_working_dir }}/pinger.py  {{ ovn_migration_working_dir }}/pinger.py.bak
+
+cat > {{ ovn_migration_working_dir }}/pinger.py <<-EOF
 import sh
 import sys
 import time
@@ -20,10 +23,10 @@ def main(ips):
     run_cmds = []
     for ip in ips:
         if netaddr.valid_ipv4(ip):
-            ip_out_file = "/home/stack/ovn_migration/" + ip.replace('.', '_') + '_ipv4_ping.out'
+            ip_out_file = "{{ validations_dir }}/" + ip.replace('.', '_') + '_ipv4_ping.out'
             run_cmds.append(sh.ping('-i', '1', '-D', ip, _out=ip_out_file, _bg=True))
         if netaddr.valid_ipv6(ip):
-            ip_out_file = "/home/stack/ovn_migration/" + ip.replace(':', '_') + '_ipv6_ping.out'
+            ip_out_file = "{{ validations_dir }}/" + ip.replace(':', '_') + '_ipv6_ping.out'
             run_cmds.append(sh.ping6('-i', '1', '-D', ip, _out=ip_out_file, _bg=True))
 
     if not run_cmds:
@@ -31,7 +34,7 @@ def main(ips):
 
     while True:
         try:
-            cmd_file = open("{{ ovn_migration_temp_dir }}/_pinger_cmd.txt", "r")
+            cmd_file = open("{{ ovn_migration_working_dir }}/_pinger_cmd.txt", "r")
             cmd = cmd_file.readline()
             if cmd.startswith("exit"):
                 break
@@ -50,7 +53,8 @@ if __name__ == '__main__':
 
 EOF
 
-cat > {{ ovn_migration_temp_dir }}/get_longest_continuous_downtime.py <<-EOF
+if [ ! -s {{ ovn_migration_working_dir }}/get_longest_continuous_downtime.py ]; then
+cat > {{ ovn_migration_working_dir }}/get_longest_continuous_downtime.py <<-EOF
 import re
 import sys
 from itertools import groupby
@@ -96,6 +100,8 @@ if __name__ == '__main__':
     main(sys.argv[1])
 EOF
 
-chmod +x {{ ovn_migration_temp_dir }}/get_longest_continuous_downtime.py
+chmod +x {{ ovn_migration_working_dir }}/get_longest_continuous_downtime.py
+
+fi
 
 echo "Exiting..."

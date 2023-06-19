@@ -287,16 +287,19 @@
             validations_type: "ovn_migration_validations"
         when: migrate|bool
 
+      - name: Set validations type, revert to ovs
+        set_fact:
+            validations_type: "ovn_migration_revert_validations"
+        when: install.revert_to_ovs|bool
+
       - name: Set validations directory, ovn migration
         set_fact:
             validations_dir: "{{ ovn_migration_working_dir }}/{{ validations_type }}"
-        when: migrate|bool
 
       - name : Create validation directory if not present
         file:
             state: directory
             path: "{{ validations_dir }}"
-        when: migrate|bool
 
       - name : Create dumps directory if not present
         file:
@@ -663,6 +666,28 @@
   tasks:
       - name: Starting migration block
         block:
+
+            - name: Generate prepare-pinger script
+              template:
+                  src: roles/create-resources/templates/prepare-pinger.sh.j2
+                  dest: "{{ ovn_migration_working_dir }}/prepare-pinger.sh"
+                  mode: 0744
+                  backup: true
+
+            - name: Execute prepare-pinger script
+              shell: >
+                  {{ ovn_migration_working_dir }}/prepare-pinger.sh </dev/null >
+                  {{ ovn_migration_working_dir }}/prepare-pinger-{{ validations_type }}.sh.log 2>&1
+              changed_when: False
+              when: not shutdown_workload|bool
+
+            - name: Start pinger in background
+              shell:
+                  set -o pipefail && rm -rf {{ ovn_migration_working_dir }}/_pinger_cmd.txt &&  nohup {{ ovn_migration_working_dir }}/start-pinger.sh
+                  > {{ ovn_migration_working_dir }}/start-pinger-{{ validations_type }}.sh.log 2>&1 &
+              changed_when: False
+              when: not shutdown_workload|bool
+
             - name: Revert to OVS
               include_role:
                   name: revert
