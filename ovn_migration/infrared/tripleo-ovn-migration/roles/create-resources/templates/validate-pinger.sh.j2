@@ -41,7 +41,7 @@ if [ "$validations_type" == "ovn_migration_validations" ]; then
     done
     echo PASS: test_workload_vms_ipv4_downtime
 
-    if ! ([[ "$resources_type" =~ "normal_ext" ]] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext" ]]) && [ "$validate_ipv6" == "True" ]; then
+    if ! ([[ "$resources_type" == "normal_ext" ]] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext" ]]) && [ "$validate_ipv6" == "True" ]; then
         echo TEST: test_workload_vms_ipv6_downtime
         file_list=`ls {{ validations_dir }}/*ipv6_ping.out`
         [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
