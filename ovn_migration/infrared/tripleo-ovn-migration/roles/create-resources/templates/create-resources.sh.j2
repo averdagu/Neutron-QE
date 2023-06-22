@@ -725,7 +725,9 @@ fi
 
 # For trunk workload we will run ping from each server to subports on other servers
 if [[ "$resources_type" =~ "trunk" ]]; then
+    [ -e {{ ovn_migration_temp_dir }}/trunk_vms_pinger_ips ] && rm {{ ovn_migration_temp_dir }}/trunk_vms_pinger_ips
     for i in $(seq 1 $num_hypervisors); do
+        echo -n "${TRUNK_VMS_FIPS[$i]} " >> {{ ovn_migration_temp_dir }}/trunk_vms_pinger_ips
         for s in $(seq 1 $num_hypervisors); do
             if [ $s -ne $i ]; then
                 # First we check that short ping works
@@ -736,8 +738,10 @@ if [[ "$resources_type" =~ "trunk" ]]; then
                 fi
                 # If short ping worked we start an infinite ping
                 ssh -i ~/.ssh/$key $server_user_name@${TRUNK_VMS_FIPS[$i]}  "ping -D ${TRUNK_SUBPORT_IPS[$s]} > ping_${TRUNK_SUBPORT_IPS[$s]}_output 2>&1 &"
+                echo -n "${TRUNK_SUBPORT_IPS[$s]} " >> {{ ovn_migration_temp_dir }}/trunk_vms_pinger_ips
             fi
         done
+        echo >> {{ ovn_migration_temp_dir }}/trunk_vms_pinger_ips
     done
 fi
 

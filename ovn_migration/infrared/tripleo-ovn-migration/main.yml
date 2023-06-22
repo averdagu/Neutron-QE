@@ -688,6 +688,20 @@
               changed_when: False
               when: not shutdown_workload|bool
 
+            - name: Generate subport-pinger script
+              template:
+                src: templates/start-subport-pingers.sh.j2
+                dest: "{{ ovn_migration_working_dir }}/start-subport-pinger.sh"
+                mode: 0744
+              when: not shutdown_workload|bool
+
+            - name: Execute subport-pinger script
+              shell: >
+                  set -o pipefail &&  {{ ovn_migration_working_dir }}/start-subport-pinger.sh </dev/null >
+                  {{ ovn_migration_working_dir }}/start-subport-pinger-{{ validations_type }}.sh.log 2>&1
+              changed_when: False
+              when: not shutdown_workload|bool
+
             - name: Revert to OVS
               include_role:
                   name: revert
