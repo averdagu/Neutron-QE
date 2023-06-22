@@ -785,9 +785,8 @@
             - name: Validate pinger results if exist
               shell:
                   set -o pipefail &&
-                  {{ ovn_migration_working_dir }}/validate-pinger.sh
-                  > {{ validations_dir }}/validate-pinger.sh.log {{ validations_type }}  2>&1
-              when: create_vms|bool
+                  {{ ovn_migration_working_dir }}/validate-pinger.sh {{ validations_type }}
+                  > {{ validations_dir }}/validate-pinger.sh.log 2>&1
 
             - name: Run OVN network agents validation script
               shell:
