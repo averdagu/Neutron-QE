@@ -6,6 +6,8 @@ server_user_name={{ server_user_name }}
 packet_loss_threshold={{ packet_loss_threshold }}
 validations_type=$1
 validate_ipv6={{ validate_ipv6 }}
+validations_dir="{{ ovn_migration_working_dir }}/$validations_type"
+
 [ "{{ osp_major_version }}" -ge "17" ] && key=id_extra_keys || key=id_rsa
 
 check_if_pinger_stopped(){
@@ -20,7 +22,13 @@ check_if_pinger_stopped(){
 }
 
 validate(){
-    ping_result=$(python {{ ovn_migration_temp_dir }}/get_longest_continuous_downtime.py $file | awk '{print $1}')
+    ping_result=$(python {{ ovn_migration_working_dir }}/get_longest_continuous_downtime.py $file | awk '{print $1}')
+    # Reassigning ping_result just in order to get it in the log, for a reference
+    ping_result=$(echo $ping_result | awk '{print $1}')
+    if [ "$ping_result" == "" ]; then
+        echo "FAIL: Unable to get ping result. Check ping logs"
+        exit
+    fi
 
     if [ $ping_result -gt $packet_loss_threshold ]; then
         echo "FAIL: $1: Continuous ping loss higher than $packet_loss_threshold packets detected ($ping_result packets)"
@@ -29,97 +37,54 @@ validate(){
     echo "$1: Passed validation"
 }
 
+echo TEST: test_workload_vms_ipv4_downtime
+file_list=`ls $validations_dir/*ipv4_ping.out`
+[ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
 
-if [ "$validations_type" == "ovn_migration_validations" ]; then
-    echo TEST: test_workload_vms_ipv4_downtime
-    file_list=`ls {{ validations_dir }}/*ipv4_ping.out`
+for file in $file_list; do
+    check_if_pinger_stopped $file
+    validate $file
+done
+echo PASS: test_workload_vms_ipv4_downtime
+
+if ! ([[ "$resources_type" == "normal_ext" ]] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext" ]]) && [ "$validate_ipv6" == "True" ]; then
+    echo TEST: test_workload_vms_ipv6_downtime
+    file_list=`ls $validations_dir/*ipv6_ping.out`
     [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
 
     for file in $file_list; do
         check_if_pinger_stopped $file
         validate $file
     done
-    echo PASS: test_workload_vms_ipv4_downtime
-
-    if ! ([[ "$resources_type" == "normal_ext" ]] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext" ]]) && [ "$validate_ipv6" == "True" ]; then
-        echo TEST: test_workload_vms_ipv6_downtime
-        file_list=`ls {{ validations_dir }}/*ipv6_ping.out`
-        [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
-
-        for file in $file_list; do
-            check_if_pinger_stopped $file
-            validate $file
-        done
-        echo PASS: test_workload_vms_ipv6_downtime
-    fi
-
-    if [[ "$resources_type" =~ "trunk" ]]; then
-        echo TEST: test_trunk_subports_downtime
-
-        if [ "{{ shutdown_workload }}" == "True" ]; then
-            for fip in `cat {{ ovn_migration_temp_dir }}/trunk_vms_fips`; do
-                ips=$(timeout 10 ssh -i ~/.ssh/$key $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
-                for ip in $ips; do
-                    timeout 10 ssh -i ~/.ssh/$key $server_user_name@$fip  "ping $ip > ping_${ip}_output 2>&1 &"
-                done
-            done
-        sleep 60
-        fi
-
-        for fip in `cat {{ ovn_migration_temp_dir }}/trunk_vms_fips`; do
-            timeout 10 ssh -i ~/.ssh/$key $server_user_name@$fip pkill --signal SIGINT ping
-            sleep 2
-            mkdir -p {{ validations_dir }}/ping_output/$fip
-            timeout 10 scp -i ~/.ssh/$key "$server_user_name@$fip:ping_*_output" {{ validations_dir }}/ping_output/$fip
-        done
-
-        file_list=`find {{ validations_dir }}/ping_output -type f`
-        [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
-
-        for file in $file_list; do
-            check_if_pinger_stopped $file quick
-            validate $file
-        done
-        echo PASS: test_trunk_subports_downtime
-    fi
+    echo PASS: test_workload_vms_ipv6_downtime
 fi
 
-if [ "$validations_type" == "ovn_migration_revert_validations" ]; then
-    echo TEST: test_workload_vms_ipv4_connectivity
-    [ ! -e {{ ovn_migration_temp_dir }}/server_fips ] && echo "FAIL: File with VM addresses not found. Something went wrong." && exit
-    while read ip; do
-        ping -c 3 $ip
-        if [ $? -ne 0 ]; then
-            echo "FAIL: No response from $ip" && exit
-        fi
-    done < "{{ ovn_migration_temp_dir }}/server_fips"
-    echo PASS: test_workload_vms_ipv4_connectivity
+if [[ "$resources_type" =~ "trunk" ]]; then
+    echo TEST: test_trunk_subports_downtime
 
-    if [ "$validate_ipv6" == "True" ]; then
-        echo TEST: test_workload_vms_ipv6_connectivity
-        [ ! -e {{ ovn_migration_temp_dir }}/server_ipv6_addresses ] && echo "FAIL: File with VM addresses not found. Something went wrong." && exit
-        while read ip; do
-            ping6 -c 3 $ip
-            if [ $? -ne 0 ]; then
-                echo "FAIL: No response from $ip" && exit
-            fi
-        done < "{{ ovn_migration_temp_dir }}/server_ipv6_addresses"
-        echo PASS: test_workload_vms_ipv6_connectivity
-    fi
-
-    if [[ "$resources_type" =~ "trunk" ]]; then
-        echo TEST: test_trunk_subports_connectivity
-        [ ! -e {{ ovn_migration_temp_dir }}/trunk_vms_fips ] && echo "FAIL: File with VM addresses not found. Something went wrong." && exit
-        for fip in `cat {{ ovn_migration_temp_dir }}/trunk_vms_fips`; do
-            ips=$(timeout 10 ssh -i ~/.ssh/key $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
+    if [ "{{ shutdown_workload }}" == "True" ]; then
+        for fip in `cat {{ ovn_migration_working_dir }}/trunk_vms_fips`; do
+            ips=$(timeout 10 ssh -i ~/.ssh/$key $server_user_name@$fip ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
             for ip in $ips; do
-                timeout 10 ssh -i ~/.ssh/$key $server_user_name@$fip ping -c 3 $ip
-                if [ $? -ne 0 ]; then
-                    echo "FAIL: Subport connectivity test failed."
-                    exit
-                fi
+                timeout 10 ssh -i ~/.ssh/$key $server_user_name@$fip  "ping $ip > ping_${ip}_output 2>&1 &"
             done
         done
-        echo PASS: test_trunk_subports_connectivity
+    sleep 60
     fi
+
+    for fip in `cat {{ ovn_migration_working_dir }}/trunk_vms_fips`; do
+        timeout 10 ssh -i ~/.ssh/$key $server_user_name@$fip pkill --signal SIGINT ping
+        sleep 2
+        mkdir -p $validations_dir/ping_output/$fip
+        timeout 10 scp -i ~/.ssh/$key "$server_user_name@$fip:ping_*_output" $validations_dir/ping_output/$fip
+    done
+
+    file_list=`find $validations_dir/ping_output -type f`
+    [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
+
+    for file in $file_list; do
+        check_if_pinger_stopped $file quick
+        validate $file
+    done
+    echo PASS: test_trunk_subports_downtime
 fi

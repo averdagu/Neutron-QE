@@ -61,23 +61,13 @@ from itertools import groupby
 from operator import itemgetter
 
 def find_missing(lst):
-    max = lst[0]
-    for i in lst:
-        if i > max:
-             max = i
-
-    min = lst[0]
-    for i in lst:
-        if i < min:
-            min = i
-    missing = max + 1
     list1 = []
-
-    for _ in lst:
-        max = max - 1
-        if max not in lst:
-          list1.append(max)
-
+    min = lst[0]
+    max = lst[-1]
+    while min < max:
+        min = min + 1
+        if min not in lst:
+            list1.append(min)
     return list1
 
 def main(log_file):
@@ -85,7 +75,11 @@ def main(log_file):
     with open(log_file, 'r') as file:
         for line in file:
             if re.search("icmp_seq", line):
+                if re.search("nreachable", line):
+                    continue
                 lines.append(int(line.split()[5].split('=')[1]))
+    if lines[0] != 1:
+        lines.insert(0, 0)
     data = sorted(find_missing(lines))
 
     longest = 0

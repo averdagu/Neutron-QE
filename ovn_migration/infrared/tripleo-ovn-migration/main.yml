@@ -736,15 +736,8 @@
   tasks:
       - name: Starting post-migration tasks
         block:
-
-            - name: Set validations type, revert to ovs
-              set_fact:
-                  validations_type: "ovn_migration_revert_validations"
-              when: install.revert_to_ovs|bool
-
             - name: Set necessary facts
               set_fact:
-                  validations_dir: "{{ ovn_migration_working_dir }}/{{ validations_type }}"
                   validations_report_file: "{{ validations_type }}.xml"
 
             - name : Create validation directory if not present
