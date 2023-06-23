@@ -72,23 +72,30 @@ def find_missing(lst):
 
 def main(log_file):
     lines = []
+    num_u = 0
     with open(log_file, 'r') as file:
         for line in file:
             if re.search("icmp_seq", line):
                 if re.search("nreachable", line):
+                    num_u = int(line.split()[3].split('=')[1])
                     continue
-                lines.append(int(line.split()[5].split('=')[1]))
+                num = int(line.split()[5].split('=')[1])
+                lines.append(num)
     if lines[0] != 1:
         lines.insert(0, 0)
+    if num_u > num:
+        lines.append(num_u)
     data = sorted(find_missing(lines))
-
-    longest = 0
-    for k, g in groupby(enumerate(data), lambda ix : ix[0] - ix[1]):
-        sequence = list(map(itemgetter(1), g))
-        length = len(sequence)
-        if length > longest:
-            longest = length
-    print("{} {}-{}".format(longest, sequence[0], sequence[-1]))
+    if data:
+        longest = 0
+        for k, g in groupby(enumerate(data), lambda ix : ix[0] - ix[1]):
+            sequence = list(map(itemgetter(1), g))
+            length = len(sequence)
+            if length > longest:
+                longest = length
+        print("{} {}-{}".format(longest, sequence[0], sequence[-1]))
+    else:
+        print(len(data))
 
 if __name__ == '__main__':
     main(sys.argv[1])

@@ -22,22 +22,27 @@ check_if_pinger_stopped(){
 }
 
 validate(){
+    [ ! -s {{ ovn_migration_working_dir }}/get_longest_continuous_downtime.py ] && echo "FAIL: script get_longest_continuous_downtime.py not found" && exit
     ping_result=$(python {{ ovn_migration_working_dir }}/get_longest_continuous_downtime.py $file | awk '{print $1}')
     # Reassigning ping_result just in order to get it in the log, for a reference
     ping_result=$(echo $ping_result | awk '{print $1}')
     if [ "$ping_result" == "" ]; then
-        echo "FAIL: Unable to get ping result. Check ping logs"
-        exit
+        echo "File $1: Unable to get ping result. Check ping log, "
+        res=1
+	return
     fi
 
     if [ $ping_result -gt $packet_loss_threshold ]; then
-        echo "FAIL: $1: Continuous ping loss higher than $packet_loss_threshold packets detected ($ping_result packets)"
-        exit
+        status="${status} File $1: Continuous ping loss higher than $packet_loss_threshold packets detected ($ping_result packets), "
+        res=1
+	return
     fi
-    echo "$1: Passed validation"
+    status="${status} File $1: Passed validation, "
 }
 
 echo TEST: test_workload_vms_ipv4_downtime
+res=0
+status="INFO: "
 file_list=`ls $validations_dir/*ipv4_ping.out`
 [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
 
@@ -45,10 +50,12 @@ for file in $file_list; do
     check_if_pinger_stopped $file
     validate $file
 done
-echo PASS: test_workload_vms_ipv4_downtime
+[ "$res" == "0" ] && echo PASS: test_workload_vms_ipv4_downtime || echo FAIL: ipv4 downtime validation failed. $status
 
 if ! ([[ "$resources_type" == "normal_ext" ]] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext" ]]) && [ "$validate_ipv6" == "True" ]; then
     echo TEST: test_workload_vms_ipv6_downtime
+    res=0
+    status="INFO: "
     file_list=`ls $validations_dir/*ipv6_ping.out`
     [ "$file_list" == "" ] && echo "FAIL: No pinger log files found. Something went wrong." && exit
 
@@ -56,11 +63,13 @@ if ! ([[ "$resources_type" == "normal_ext" ]] || [ "$resources_type" == "trunk_e
         check_if_pinger_stopped $file
         validate $file
     done
-    echo PASS: test_workload_vms_ipv6_downtime
+    [ "$res" == "0" ] && echo PASS: test_workload_vms_ipv6_downtime || echo FAIL: ipv6 downtime validation failed. $status
 fi
 
 if [[ "$resources_type" =~ "trunk" ]]; then
     echo TEST: test_trunk_subports_downtime
+    res=0
+    status="INFO: "
 
     if [ "{{ shutdown_workload }}" == "True" ]; then
         for fip in `cat {{ ovn_migration_working_dir }}/trunk_vms_fips`; do
@@ -86,5 +95,5 @@ if [[ "$resources_type" =~ "trunk" ]]; then
         check_if_pinger_stopped $file quick
         validate $file
     done
-    echo PASS: test_trunk_subports_downtime
+    [ "$res" == "0" ] && echo PASS: test_trunk_subports_downtime || echo FAIL: trunk subports downtime validation failed. $status
 fi
