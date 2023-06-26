@@ -81,10 +81,14 @@ def main(log_file):
                     continue
                 num = int(line.split()[5].split('=')[1])
                 lines.append(num)
+            elif re.search("transmitted", line):
+                num_t = int(line.split()[0])
     if lines[0] != 1:
         lines.insert(0, 0)
     if num_u > num:
         lines.append(num_u)
+    if num_t > num_u:
+        lines.append(num_t)
     data = sorted(find_missing(lines))
     if data:
         longest = 0
