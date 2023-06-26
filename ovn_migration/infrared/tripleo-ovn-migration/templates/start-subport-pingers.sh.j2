@@ -3,19 +3,22 @@ set -x
 
 server_user_name={{ server_user_name }}
 [ "{{ osp_major_version }}" -ge "17" ] && key=id_extra_keys || key=id_rsa
-while read line; do
-    ext_ip=$(echo $line | cut -d' ' -f1)
-    accessible_ips=$(echo $line | cut -d' ' -f 2-)
-    for ip in $accessible_ips; do
-        # we need key and server_user_name here
-        timeout 20 ssh -n -i ~/.ssh/$key $server_user_name@$ext_ip "ping $ip -c 3"
-        if [ $? -ne 0 ]; then
-            echo "Internal port is not pingable. Something went wrong."
-            exit
-        fi
-        # If short ping worked we start an infinite ping
-        ssh -n -i ~/.ssh/$key $server_user_name@$ext_ip  "[ -e ping_${ip}_output ] && mv ping_${ip}_output  ping_${ip}_output.bak || true"
-        ssh -n -i ~/.ssh/$key $server_user_name@$ext_ip  "ping -D $ip > ping_${ip}_output 2>&1 &"
-    done
-done<{{ ovn_migration_working_dir }}/trunk_vms_pinger_ips
-
+if [ -s {{ ovn_migration_working_dir }}/trunk_vms_pinger_ips ]; then
+    while read line; do
+        ext_ip=$(echo $line | cut -d' ' -f1)
+        accessible_ips=$(echo $line | cut -d' ' -f 2-)
+        for ip in $accessible_ips; do
+            # we need key and server_user_name here
+            timeout 20 ssh -n -i ~/.ssh/$key $server_user_name@$ext_ip "ping $ip -c 3"
+            if [ $? -ne 0 ]; then
+                echo "Internal port is not pingable. Something went wrong."
+                exit
+            fi
+            # If short ping worked we start an infinite ping
+            ssh -n -i ~/.ssh/$key $server_user_name@$ext_ip  "[ -e ping_${ip}_output ] && mv ping_${ip}_output  ping_${ip}_output.bak || true"
+            ssh -n -i ~/.ssh/$key $server_user_name@$ext_ip  "ping -D $ip > ping_${ip}_output 2>&1 &"
+        done
+    done<{{ ovn_migration_working_dir }}/trunk_vms_pinger_ips
+else
+    echo "{{ ovn_migration_working_dir }}/trunk_vms_pinger_ips not exist or is empty. Check if workload has VMs with trunk ports."
+fi
