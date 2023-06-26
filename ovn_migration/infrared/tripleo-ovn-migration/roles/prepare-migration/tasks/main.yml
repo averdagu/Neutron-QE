@@ -77,62 +77,52 @@
   set_fact:
       ovn_extra_configs: '/home/stack/ovn-extra-configs.yaml'
 
-- name: Construct overcloud-deploy-ovn.sh script for infrared deployments
+- name: Construct overcloud-deploy-ovn.sh script for infrared deployments (add env file)
+  lineinfile:
+      dest: "{{ overcloud_deploy_ovn_script }}"
+      line: "{{ item }} \\"
+      insertbefore: "^.*network-environment.*"
+  with_items:
+      - "-e {{ neutron_ovn_env_path }}"
+  when:
+      - infrared_deployment|bool
+      - not is_sriov|bool
+
+- name: Construct overcloud-deploy-ovn.sh script for infrared deployments (SR-IOV, add env file)
+  lineinfile:
+      dest: "{{ overcloud_deploy_ovn_script }}"
+      line: "{{ item }} \\"
+      insertbefore: "^.*network-environment.*"
+  with_items:
+      - "-e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-ha.yaml"
+      - "-e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-sriov.yaml"
+  when:
+      - infrared_deployment|bool
+      - is_sriov|bool
+
+
+- name: Construct overcloud-deploy-ovn.sh script for infrared deployments (add extra configs)
   lineinfile:
       dest: "{{ overcloud_deploy_ovn_script }}"
       line: "{{ item }} \\"
       insertbefore: "^.*--log-file.*"
   with_items:
-      - "-e {{ neutron_ovn_env_path }}"
       - "-e {{ ovn_extra_configs }}"
       - "-e /home/stack/ovn-extras.yaml"
   when:
       - infrared_deployment|bool
-      - not is_sriov|bool
       - not is_after_ffu|bool
 
-- name: Contruct overcloud-deploy-ovn.sh script for environments that are after FFU
+- name: Contruct overcloud-deploy-ovn.sh script for environments that are after FFU (add extra configs)
   lineinfile:
       dest: "{{ overcloud_deploy_ovn_script }}"
       line: "{{ item }} \\"
       insertbefore: "^.*2>&1.*"
   with_items:
-      - "-e {{ neutron_ovn_env_path }}"
       - "-e {{ ovn_extra_configs }}"
       - "-e /home/stack/ovn-extras.yaml"
   when:
       - infrared_deployment|bool
-      - not is_sriov|bool
-      - is_after_ffu|bool
-
-- name: Construct overcloud-deploy-ovn.sh script for infrared deployments (SR-IOV)
-  lineinfile:
-      dest: "{{ overcloud_deploy_ovn_script }}"
-      line: "{{ item }} \\"
-      insertbefore: "^.*--log-file.*"
-  with_items:
-      - "-e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-ha.yaml"
-      - "-e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-sriov.yaml"
-      - "-e {{ ovn_extra_configs }}"
-      - "-e /home/stack/ovn-extras.yaml"
-  when:
-      - infrared_deployment|bool
-      - is_sriov|bool
-      - not is_after_ffu|bool
-
-- name: Construct overcloud-deploy-ovn.sh script for infrared deployments (SR-IOV after FFU)
-  lineinfile:
-      dest: "{{ overcloud_deploy_ovn_script }}"
-      line: "{{ item }} \\"
-      insertbefore: "^.*2>&1.*"
-  with_items:
-      - "-e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-ha.yaml"
-      - "-e /usr/share/openstack-tripleo-heat-templates/environments/services/neutron-ovn-sriov.yaml"
-      - "-e {{ ovn_extra_configs }}"
-      - "-e /home/stack/ovn-extras.yaml"
-  when:
-      - infrared_deployment|bool
-      - is_sriov|bool
       - is_after_ffu|bool
 
 - name: Add disable-container-manage-clean-orphans environment file for batched migration
@@ -148,13 +138,9 @@
       line: "cd /home/stack"
       insertbefore: "^.*openstack.*overcloud.*deploy.*"
 
-- name: Set current bridge mappings into OVN extra configs file
+- name: Create OVN extra configs file
   shell: |
-      master_node=$(grep no_proxy {{ overcloudrc }} | tr ',' "\n" | grep "192.168\|ctlplane" | sed 's/.*=\(.*\)/\1/')
-      current_mappings=$(ssh {{ overcloud_ssh_user }}@$master_node 'sudo podman exec -it neutron_api crudini --get /etc/neutron/plugins/ml2/openvswitch_agent.ini ovs bridge_mappings' | tr -d "\r" )
       echo "parameter_defaults:" > {{ ovn_extra_configs }}
-      echo "  ComputeParameters:" >> {{ ovn_extra_configs }}
-      echo "    NeutronBridgeMappings: \"$current_mappings\"" >> {{ ovn_extra_configs }}
   when: infrared_deployment|bool
 
 - name: Set geneve into OVN extra configs file
