@@ -72,7 +72,9 @@ def find_missing(lst):
 
 def main(log_file):
     lines = []
+    num = 0
     num_u = 0
+    num_t = 0
     with open(log_file, 'r') as file:
         for line in file:
             if re.search("icmp_seq", line):
@@ -83,7 +85,7 @@ def main(log_file):
                 lines.append(num)
             elif re.search("transmitted", line):
                 num_t = int(line.split()[0])
-    if lines[0] != 1:
+    if lines == [] or lines[0] != 1:
         lines.insert(0, 0)
     if num_u > num:
         lines.append(num_u)
