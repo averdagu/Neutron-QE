@@ -11,7 +11,7 @@ while read line; do
         timeout 20 ssh -n -i ~/.ssh/$key $server_user_name@$ext_ip "ping $ip -c 3"
         if [ $? -ne 0 ]; then
             echo "Internal port is not pingable. Something went wrong."
-            exit 1
+            exit
         fi
         # If short ping worked we start an infinite ping
         ssh -n -i ~/.ssh/$key $server_user_name@$ext_ip  "[ -e ping_${ip}_output ] && mv ping_${ip}_output  ping_${ip}_output.bak || true"
