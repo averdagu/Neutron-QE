@@ -164,13 +164,14 @@ resources:
                               vlan_id:
                                 get_param: ExternalNetworkVlanID
                               addresses:
-                                - ip_netmask:
+                                -
+                                  ip_netmask:
                                     get_param: ExternalIpSubnet
                               routes:
                                 -
                                   ip_netmask: 0.0.0.0/0
                                   next_hop:
-                                      get_param: ExternalInterfaceDefaultRoute
+                                    get_param: ExternalInterfaceDefaultRoute
 
 outputs:
   OS::stack_id:
