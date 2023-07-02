@@ -649,15 +649,21 @@ validate_vms_connectivity (){
         done
         # TODO at this moment we skip testing ssh via ipv6 until it's stable
         if [ "$1" != "ipv6" ]; then
-            timeout 20 ssh -i ~/.ssh/$key -o StrictHostKeyChecking=no \
-            -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
-            if [ $? -ne 0 ]; then
-                echo "VM not accessible via ssh by $server_ip. Something went wrong."
-                # printing server information for debugging purposes
-                server_id=$(openstack server list -f value | grep $server_ip | awk '{print $1}')
-                openstack console log show $server_id
-                exit 1
-            fi
+            for ssh_attempt in `seq 1 5`; do
+                timeout 20 ssh -i ~/.ssh/$key -o StrictHostKeyChecking=no \
+                -o UserKnownHostsFile=/dev/null  $server_user_name@$server_ip date
+                if [ $? -ne 0 ]; then
+                    if [ $ssh_attempt -eq 5 ]; then
+                        echo "VM not accessible via ssh by $server_ip. Something went wrong."
+                        # printing server information for debugging purposes
+                        server_id=$(openstack server list -f value | grep $server_ip | awk '{print $1}')
+                        openstack console log show $server_id
+                        exit 1
+                    else
+                        continue
+                    fi
+                fi
+            done
         fi
     done
 }
