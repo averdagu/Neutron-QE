@@ -18,6 +18,13 @@
 - name: Copy overcloud deploy script to overcloud-deploy-ovs.sh
   command: cp -f ~/overcloud_deploy.sh  {{ overcloud_deploy_ovs_script }}
 
+- name: Replace ovn-router with OVS router
+  shell: |
+      files=$(sed -n '/network-environment/,$p' {{ overcloud_deploy_ovs_script }} | grep '\-e' | sed 's/-e\ //g' | sed 's/\\//')
+      for f in $files; do
+        sudo sed -i 's/\(.*Neutron.*Plugin.*\)ovn-router\(.*\)/\1router\2/g' $f
+      done
+
 - name: Create ovs-extra.yml config file
   shell: |
       echo "parameter_defaults:" > /home/stack/ovs-extra.yml
