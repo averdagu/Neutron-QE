@@ -60,7 +60,6 @@
       regexp: "{{ item }}"
   with_items:
       - "^.*openstack-tripleo-heat-templates.*ovs.*yaml"
-      - "^.*floating_ip_port_forwarding.yaml"
   when: infrared_deployment|bool
 
 - name: Set the neutron-ovn-dvr-ha.yaml file path if dvr
@@ -100,6 +99,12 @@
       - infrared_deployment|bool
       - is_sriov|bool
 
+- name: Replace OVS router with ovn-router
+  shell: |
+      files=$(sed -n '/network-environment/,$p' {{ overcloud_deploy_script }} | grep '\-e' | sed 's/-e\ //g' | sed 's/\\//')
+      for f in $files; do
+        sudo sed -i 's/\(.*Neutron.*Plugin.*\)\(router.*\)/\1ovn-\2/g' $f
+      done
 
 - name: Construct overcloud-deploy-ovn.sh script for infrared deployments (add extra configs)
   lineinfile:
