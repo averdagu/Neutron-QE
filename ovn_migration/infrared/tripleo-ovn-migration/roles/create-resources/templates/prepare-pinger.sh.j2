@@ -94,12 +94,16 @@ def main(log_file):
     data = sorted(find_missing(lines))
     if data:
         longest = 0
+        longest_start = 0
+        longest_end = 0
         for k, g in groupby(enumerate(data), lambda ix : ix[0] - ix[1]):
             sequence = list(map(itemgetter(1), g))
             length = len(sequence)
             if length > longest:
                 longest = length
-        print("{} {}-{}".format(longest, sequence[0], sequence[-1]))
+                longest_start = sequence[0]
+                longest_end = sequence[-1]
+        print("{} {}-{}".format(longest, longest_start, longest_end))
     else:
         print(len(data))
 

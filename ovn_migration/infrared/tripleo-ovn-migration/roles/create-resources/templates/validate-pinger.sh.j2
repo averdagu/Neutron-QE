@@ -23,8 +23,8 @@ check_if_pinger_stopped(){
 
 validate(){
     [ ! -s {{ ovn_migration_working_dir }}/get_longest_continuous_downtime.py ] && echo "FAIL: script get_longest_continuous_downtime.py not found" && exit
-    ping_result=$(python {{ ovn_migration_working_dir }}/get_longest_continuous_downtime.py $file | awk '{print $1}')
-    # Reassigning ping_result just in order to get it in the log, for a reference
+    # First we get whole output of the script just in order to get start/end in the log for a reference
+    ping_result=$(python {{ ovn_migration_working_dir }}/get_longest_continuous_downtime.py $file)
     ping_result=$(echo $ping_result | awk '{print $1}')
     if [ "$ping_result" == "" ]; then
         echo "File $1: Unable to get ping result. Check ping log, "
