@@ -99,6 +99,7 @@ if ! [[ "$resources_type" =~ "granular_poc" ]]; then
   openstack router create ovn-migration-router-{{ resource_suffix }} $dvr_params
 
   openstack router set --external-gateway {{ public_network_name }} ovn-migration-router-{{ resource_suffix }}
+  [ $? -ne 0 ] && echo Problem with connecting router to external network. Can not continue. && exit 1
 
   openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-{{ resource_suffix }}
   openstack router add subnet ovn-migration-router-{{ resource_suffix }} ovn-migration-subnet-ipv6-{{ resource_suffix }}
