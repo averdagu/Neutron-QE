@@ -544,6 +544,10 @@ validate_vm_migration(){
   else
     test_name=$(echo ${FUNCNAME[1]} | sed 's/test_/test_cold_/')
   fi
+  if [ "$2" == "back" ]; then
+    test_name="${test_name}_back"
+  fi
+
   echo TEST: $test_name
   [ "$servers_for_migration" == "" ] && echo SKIPPED: No servers suitable for the test && return
   for server in $servers_for_migration; do
@@ -559,10 +563,15 @@ validate_vm_migration(){
       start_vm_int_downtime_check
     fi
     echo execute vm migration command
+    if [ "$2" == "back" ]; then
+      dst_host=$(grep $server /tmp/workload_servers | awk '{print $3}')
+      extra_param="$extra_param --host $dst_host"
+    fi
     timeout 120 openstack server migrate $server $extra_param --wait
     host_new=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
     echo new host = $host_new
     [ "$host" == "$host_new" ] && echo FAIL: Server $server failed to migrate && return
+    [ "$2" == "back" ] && [ "$host_new" != "$dst_host" ] && echo FAIL: Server $server failed to migrate back to original host && return
     status=$(openstack server show $server -c status  -f value)
     if [ "$1" != "live" ]; then
       [ "$status" != "VERIFY_RESIZE" ] && echo FAIL: Server $server status is not VERIFY_RESIZE, actual status is $status  && return
@@ -594,12 +603,12 @@ validate_internal_ports_connectivity status_only
 
 test_vm_migration(){
   servers_for_migration=$normal_servers_for_migration
-  validate_vm_migration $1
+  validate_vm_migration "$@"
 }
 
 test_migration_vm_with_trunk(){
   servers_for_migration=$trunk_servers_for_migration
-  validate_vm_migration $1
+  validate_vm_migration "$@"
 }
 
 if [ "{{ validate_vm_migration }}" == "True" ]; then
@@ -612,6 +621,11 @@ if [ "{{ validate_vm_migration }}" == "True" ]; then
     test_vm_migration
     test_migration_vm_with_trunk
   fi
+
+  if [ "{{ validate_vm_migration_back }}" == "True" ]; then
+    test_vm_migration live back
+    test_migration_vm_with_trunk live back
+  fi
 fi
 
 validate_vm_reboot(){
@@ -622,17 +636,24 @@ validate_vm_reboot(){
     start_status=$(openstack server show -c status -f value $server)
     echo starting status = $start_status
     [ "$start_status" != "ACTIVE" ] && echo FAIL: Starting VM status is not ACTIVE. && return
-    echo_title "Status of server $server connectivity before VM reboot test" >> $summary_file
+    [ "$1" == "shelve" ] && reboot_scenario="shelve/unshelve" || reboot_scenario="stop/start"
+    echo_title "Status of server $server connectivity before VM $reboot_scenario test" >> $summary_file
     validate_external_ports_connectivity pre-check || return
     validate_internal_ports_connectivity pre-check || return
-    echo execute server stop command
-    openstack server stop $server
-    sleep 5
-    interim_status=$(openstack server show -c status -f value $server)
+    [ "$1" == "shelve" ] && stop_command="shelve" || stop_command="stop"
+    echo "stopping server by '$stop_command' command"
+    openstack server $stop_command $server
+    [ "$1" == "shelve" ] && expected_interim_status="SHELVED_OFFLOADED" || expected_interim_status="SHUTOFF"
+    for i in `seq 1 10`; do
+      interim_status=$(openstack server show -c status -f value $server)
+      [ "$interim_status" == "$expected_interim_status" ] && break
+      [ $i -lt 10 ] && sleep 5
+    done
     echo interim status = $interim_status
-    [ "$interim_status" != "SHUTOFF" ] && echo FAIL: Interim VM status is not SHUTOFF. && return
-    echo execute server start command
-    openstack server start $server
+    [ "$interim_status" != "$expected_interim_status" ] && echo FAIL: Interim VM status is not $expected_interim_status. && return
+    [ "$1" == "shelve" ] && start_command="unshelve" || start_command="start"
+    echo "Starting server by '$start_command' command"
+    openstack server $start_command $server
 
     # Wait till the VM allows ssh connections
     vm_status="down"
@@ -661,10 +682,10 @@ validate_vm_reboot(){
     # TODO add waiting loop
     echo Wait 40 seconds before staring validations to make sure all is ready
     sleep 40
-    echo_title "Overall connectivity status after VM stop/start test" >> $summary_file
+    echo_title "Overall connectivity status after VM $reboot_scenario test" >> $summary_file
     validate_external_ports_connectivity status_only
     validate_internal_ports_connectivity status_only
-    echo_title "Status of server $server connectivity after VM stop/start test" >> $summary_file
+    echo_title "Status of server $server connectivity after VM $reboot_scenario test" >> $summary_file
     validate_external_ports_connectivity post-check || return
     validate_internal_ports_connectivity post-check || return
   done
@@ -681,9 +702,24 @@ test_reboot_vm_with_trunk(){
   validate_vm_reboot
 }
 
+test_shelve_vm(){
+  servers_for_reboot=$normal_servers_for_reboot
+  validate_vm_reboot shelve
+}
+
+test_shelve_vm_with_trunk(){
+  servers_for_reboot=$trunk_servers_for_reboot
+  validate_vm_reboot shelve
+}
+
 if [ "{{ validate_vm_reboot }}" == "True" ]; then
   test_reboot_vm
   test_reboot_vm_with_trunk
+fi
+
+if [ "{{ validate_vm_shelve }}" == "True" ]; then
+  test_shelve_vm
+  test_shelve_vm_with_trunk
 fi
 
 echo Finished validation of workload operations

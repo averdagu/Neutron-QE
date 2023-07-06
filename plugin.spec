@@ -212,10 +212,20 @@ subparsers:
                       help: Whether to migrate workload VMs (both, i.e. cold and live scenario) after migration to OVN and check connectivity.
                       default: True
 
+                  validate_vm_migration_back:
+                      type: Bool
+                      help: Whether to migrate workload VMs after vm migration back to the original host and check connectivity.
+                      default: False
+
                   validate_vm_reboot:
                       type: Bool
                       help: Whether to reboot workload VMs after migration to OVN and check connectivity.
                       default: True
+
+                  validate_vm_shelve:
+                      type: Bool
+                      help: Whether to shelve workload VMs after migration to OVN and check connectivity.
+                      default: False
 
                   ping_during_vm_migration:
                       type: Bool
