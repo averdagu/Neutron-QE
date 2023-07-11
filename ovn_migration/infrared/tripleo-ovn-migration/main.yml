@@ -618,14 +618,16 @@
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh start-migration
                   > {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh.log 2>&1
-              when: not batched_migration_support|bool
+              when: not batched_migration_support|bool or install.single_command|bool
 
             - name: Start the migration process (batched)
               shell:
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh install-ovn
                   > {{ ovn_migration_working_dir }}/install-ovn.sh.log 2>&1
-              when: batched_migration_support|bool
+              when:
+                  - batched_migration_support|bool
+                  - not install.single_command|bool
 
             - name: Activate OVN (batched, all_at_once)
               shell:
@@ -634,12 +636,14 @@
                   > {{ ovn_migration_working_dir }}/activate-ovn.sh.log 2>&1
               when:
                   - batched_migration_support|bool
+                  - not install.single_command|bool
                   - install.batched_scenario_tasks == ''
 
             - name: Execute batched migration scenario tasks
               include_tasks: ./batched_scenario_tasks.yml
               when:
                   - batched_migration_support|bool
+                  - not install.single_command|bool
                   - install.batched_scenario_tasks != ''
 
             - name: Cleanup OVS (batched)
@@ -647,7 +651,9 @@
                   set -o pipefail &&
                   {{ ovn_migration_working_dir }}/run-ovn-migration-cmd.sh cleanup-ovs
                   > {{ ovn_migration_working_dir }}/cleanup-ovs.sh.log 2>&1
-              when: batched_migration_support|bool
+              when:
+                  - batched_migration_support|bool
+                  - not install.single_command|bool
 
             - name: Run dumping objects script after migration to ovn
               shell:

@@ -478,11 +478,14 @@ check_iptables(){
 
 validate_leftovers_cleanup(){
   echo Validating leftovers cleanup of server $server
-  ports=$(openstack port list --device-id $server -c ID -f value)
-  for port in $ports; do
-    echo port = $port
-    (check_nic && check_iptables && check_iptables v6) || return 1
-  done
+  # TODO create leftovers check relevant for revert as well
+  if ! [[ "{{ validations_type }}" =~ revert ]]; then
+    ports=$(openstack port list --device-id $server -c ID -f value)
+    for port in $ports; do
+      echo port = $port
+      (check_nic && check_iptables && check_iptables v6) || return 1
+    done
+  fi
 }
 
 start_vm_ext_downtime_check(){

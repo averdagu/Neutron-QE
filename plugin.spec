@@ -269,6 +269,11 @@ subparsers:
                       help: URL with a file that contains tasks to execute using batched scenario.
                       default: ''
 
+                  single_command:
+                      type: Bool
+                      help: whether the run single start-migration command (when batched is supported)
+                      default: True
+
                   fix_workload_mtu:
                       type: Bool
                       help: Whether to go over all workload VMs and reduce MTU before starting the migration.
