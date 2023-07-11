@@ -215,7 +215,7 @@ subparsers:
                   validate_vm_migration_back:
                       type: Bool
                       help: Whether to migrate workload VMs after vm migration back to the original host and check connectivity.
-                      default: False
+                      default: True
 
                   validate_vm_reboot:
                       type: Bool
