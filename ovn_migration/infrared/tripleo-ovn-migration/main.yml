@@ -209,6 +209,14 @@
               shell: |
                   sed -i "s/stdout')/stdout_lines') | flatten/" /usr/share/ansible/neutron-ovn-migration/playbooks/tasks/notify-nova.yml
               when: install.fix_notify_nova|bool
+
+            - name: Workaround for missing support for custom backup ip and subnet
+              shell: |
+                  config_file=/usr/share/ansible/neutron-ovn-migration/playbooks/roles/recovery-backup/bar_rear_setup_custom_configuration.yaml
+                  sudo sed -i '/tripleo_backup_and_restore_local_config/i \ \ \ \ tripleo_backup_and_restore_server: {{ backup_migration_ip }}' $config_file
+                  sudo sed -i '/tripleo_backup_and_restore_local_config/i \ \ \ \ tripleo_backup_and_restore_clients_nets: [{{ backup_migration_ctl_plane_cidrs }}]' $config_file
+              when: install.push_custom_backup_ip_and_subnet
+
         when: migrate|bool
 
 - name: Install monitoring tool

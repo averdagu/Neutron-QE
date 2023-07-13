@@ -350,3 +350,8 @@ subparsers:
                       type: Bool
                       help: Temporary workaround. Inject a variable with inventory file, fix for https://bugzilla.redhat.com/show_bug.cgi?id=2208238
                       default: False
+
+                  push_custom_backup_ip_and_subnet:
+                      type: Bool
+                      help: Whether to apply a workaround for BZ#2222624
+                      default: False
