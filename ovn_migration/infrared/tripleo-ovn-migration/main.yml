@@ -213,8 +213,8 @@
             - name: Workaround for missing support for custom backup ip and subnet
               shell: |
                   config_file=/usr/share/ansible/neutron-ovn-migration/playbooks/roles/recovery-backup/bar_rear_setup_custom_configuration.yaml
-                  sudo sed -i '/tripleo_backup_and_restore_local_config/i \ \ \ \ tripleo_backup_and_restore_server: {{ backup_migration_ip }}' $config_file
-                  sudo sed -i '/tripleo_backup_and_restore_local_config/i \ \ \ \ tripleo_backup_and_restore_clients_nets: [{{ backup_migration_ctl_plane_cidrs }}]' $config_file
+                  sudo sed -i '/tripleo_backup_and_restore_local_config/i \ \ \ \ tripleo_backup_and_restore_server: {{ install.backup_migration_ip }}' $config_file
+                  sudo sed -i '/tripleo_backup_and_restore_local_config/i \ \ \ \ tripleo_backup_and_restore_clients_nets: [{{ install.backup_migration_ctl_plane_cidrs }}]' $config_file
               when: install.push_custom_backup_ip_and_subnet
 
         when: migrate|bool
