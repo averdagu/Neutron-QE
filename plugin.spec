@@ -302,7 +302,7 @@ subparsers:
                   fix_poolmetadatasize:
                       type: Bool
                       help: Temporary workaround. Whether to inject a code that fixes node recovery issue caused by BZ2149586.
-                      default: True
+                      default: False
 
                   fix_external_dhcp_ovs:
                       type: Bool
@@ -335,6 +335,11 @@ subparsers:
                       type: Value
                       help: Control plane CIDRs for backup. Can contain more than one value, e.g. 192.168.25.0/25,10.0.1.1/30. See details in BZ#2158437
                       default: ''
+
+                  push_unattended_restore_params:
+                      type: Bool
+                      help: Whether to push ReaR params to ensure unattended restore.
+                      default: False
 
                   fix_subnet_for_backup:
                       type: Bool

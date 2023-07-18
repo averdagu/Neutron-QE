@@ -182,33 +182,35 @@
                   if [ "{{ osp_major_version | int }}" == "17" ]; then
                   sed -i '/USER_INPUT_TIMEOUT/a\ \ KERNEL_CMDLINE: unattended' {{ backup_and_restore_path }}/defaults/main.yml
                   fi
-              when: install.create_backup|bool
-
-            - name: Temporary workaround for backup issue bz2101765 on OSP17
-              shell: |
-                  sed  -i "s/.*desync_output.stderr.*/  until: desync_output.stderr == \"\" or '\"WARN\" in desync_output.stderr'/" /usr/share/ansible/roles/backup_and_restore/tasks/db_backup.yml
-              when: osp_major_version | int >= 17
-
-            - name: Temporary workaround for backup issue caused by bz2149586
-              shell: |
-                  sed -i "/Take this node out of pacemaker/i - name: Inject poolmetadatasize fix\n  shell: |\n      sed -i 's/\\\(--type\ thin-pool\\\)/--poolmetadatasize 8M \\\1/' /usr/share/rear/layout/prepare/GNU/Linux/110_include_lvm_code.sh\n  tags:\n    - bar_create_recover_image\n" {{ backup_and_restore_path }}/tasks/run_backup.yml
               when:
-                  - osp_major_version | int >= 17
                   - install.create_backup|bool
-                  - install.fix_poolmetadatasize|bool
+                  - install.push_unattended_restore_params|bool
 
-            - name: Temporary workaround for inventory issue
-              shell: |
-                  sed -i "/backup()/a \ \ \ \ local inventory_file=\"\$OOO_WORKDIR/\$STACK_NAME/config-download/\$STACK_NAME/tripleo-ansible-inventory.yaml\"" /usr/bin/ovn_migration.sh
-              when:
-                  - osp_major_version | int >= 17
-                  - install.create_backup|bool
-                  - install.fix_inventory_for_backup|bool
+#            - name: Temporary workaround for backup issue bz2101765 on OSP17
+#              shell: |
+#                  sed  -i "s/.*desync_output.stderr.*/  until: desync_output.stderr == \"\" or '\"WARN\" in desync_output.stderr'/" /usr/share/ansible/roles/backup_and_restore/tasks/db_backup.yml
+#              when: osp_major_version | int >= 17
 
-            - name: Apply temporary fix for notify-nova
-              shell: |
-                  sed -i "s/stdout')/stdout_lines') | flatten/" /usr/share/ansible/neutron-ovn-migration/playbooks/tasks/notify-nova.yml
-              when: install.fix_notify_nova|bool
+#            - name: Temporary workaround for backup issue caused by bz2149586
+#              shell: |
+#                  sed -i "/Take this node out of pacemaker/i - name: Inject poolmetadatasize fix\n  shell: |\n      sed -i 's/\\\(--type\ thin-pool\\\)/--poolmetadatasize 8M \\\1/' /usr/share/rear/layout/prepare/GNU/Linux/110_include_lvm_code.sh\n  tags:\n    - bar_create_recover_image\n" {{ backup_and_restore_path }}/tasks/run_backup.yml
+#              when:
+#                  - osp_major_version | int >= 17
+#                  - install.create_backup|bool
+#                  - install.fix_poolmetadatasize|bool
+
+#            - name: Temporary workaround for inventory issue
+#              shell: |
+#                  sed -i "/backup()/a \ \ \ \ local inventory_file=\"\$OOO_WORKDIR/\$STACK_NAME/config-download/\$STACK_NAME/tripleo-ansible-inventory.yaml\"" /usr/bin/ovn_migration.sh
+#              when:
+#                  - osp_major_version | int >= 17
+#                  - install.create_backup|bool
+#                  - install.fix_inventory_for_backup|bool
+
+#            - name: Apply temporary fix for notify-nova
+#              shell: |
+#                  sed -i "s/stdout')/stdout_lines') | flatten/" /usr/share/ansible/neutron-ovn-migration/playbooks/tasks/notify-nova.yml
+#              when: install.fix_notify_nova|bool
 
             - name: Workaround for missing support for custom backup ip and subnet
               shell: |
@@ -481,18 +483,27 @@
 
             - name: Fix controller group name for backup and restore
               shell: |
-                  tasks_file={{ ovn_migration_working_dir }}/playbooks/roles/recovery-backup/tasks/main.yml
-                  sed -i "/tripleo_backup_and_restore_server/i \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \"tripleo_controller_group_name\": ControllerSriov," $tasks_file
-                  sed -i "/--inventory.*inventory.yaml$/a \ \ \ \ \ \ \ \ --extra-vars '{\n\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \"tripleo_controller_group_name\": ControllerSriov\n\ \ \ \ \ \ \ \ \ \ \ \ \ \ }'" $tasks_file
+                  tasks_file=/usr/share/ansible/neutron-ovn-migration/playbooks/roles/recovery-backup/tasks/main.yml
+                  sed -i "/nfs_server_group_name/i \ \ \ \ \ \ \ \ \ \ \ \ \"tripleo_controller_group_name\": ControllerSriov," $tasks_file
+                  sed -i "/--inventory.*inventory.yaml$/a \ \ \ \ --extra-vars '{\n\ \ \ \ \ \ \ \ \"tripleo_controller_group_name\": ControllerSriov\n\ \ \ \ \ \ }'" $tasks_file
                   sed -i "s/\(^.*--inventory.*inventory.yaml\)$/\1\ \\\/" $tasks_file
               when: install.fix_controller_group_name_for_sriov|bool
-
-            - name: Fix subnet for backup and restore
-              shell: |
-                  net=$(echo {{ install.backup_migration_ip }} | awk -F"." '{print $1"."$2"."$3".0/24"}')
-                  sed -i "/tripleo_backup_and_restore_server/i \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \"tripleo_backup_and_restore_clients_nets\": [$net]," /usr/share/ansible/neutron-ovn-migration/playbooks/roles/recovery-backup/tasks/main.yml
-              when: install.fix_subnet_for_backup|bool
               become: true
+
+            - name: Override controller group name for backup
+              lineinfile:
+                  path: "/usr/share/ansible/neutron-ovn-migration/playbooks/roles/recovery-backup/files/setup_rear_extra_vars.yaml"
+                  insertbefore: "tripleo_backup_and_restore_local_config:"
+                  line: "tripleo_controller_group_name: ControllerSriov"
+              when: install.fix_controller_group_name_for_sriov|bool
+              become: true
+
+#            - name: Fix subnet for backup and restore
+#              shell: |
+#                  net=$(echo {{ install.backup_migration_ip }} | awk -F"." '{print $1"."$2"."$3".0/24"}')
+#                  sed -i "/tripleo_backup_and_restore_server/i \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \"tripleo_backup_and_restore_clients_nets\": [$net]," /usr/share/ansible/neutron-ovn-migration/playbooks/roles/recovery-backup/tasks/main.yml
+#              when: install.fix_subnet_for_backup|bool
+#              become: true
 
             - name: Create ovn migration script
               template:
