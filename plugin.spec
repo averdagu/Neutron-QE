@@ -360,3 +360,8 @@ subparsers:
                       type: Bool
                       help: Whether to apply a workaround for BZ#2222624
                       default: False
+
+                  apply_patch_for_custom_backup_ip:
+                      type: Bool
+                      help: Whether to apply changes from patch https://code.engineering.redhat.com/gerrit/c/neutron/+/445023
+                      default: False

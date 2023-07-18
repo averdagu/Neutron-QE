@@ -219,6 +219,18 @@
                   sudo sed -i '/tripleo_backup_and_restore_local_config/i \ \ \ \ tripleo_backup_and_restore_clients_nets: [{{ install.backup_migration_ctl_plane_cidrs }}]' $config_file
               when: install.push_custom_backup_ip_and_subnet
 
+            - name: Apply patch for fixing BZ#2222624
+              shell: |
+                  [ ! -e bz2222624_patch ] && mkdir bz2222624_patch
+                  curl -o bz2222624_patch/main.yml  http://10.46.4.131:8080/ella/ovn_migration/main.yml
+                  curl -o bz2222624_patch/setup_rear_extra_vars.yaml  http://10.46.4.131:8080/ella/ovn_migration/setup_rear_extra_vars.yaml
+                  playbooks_path=/usr/share/ansible/neutron-ovn-migration/playbooks/roles/recovery-backup/
+                  [ ! -e ${playbooks_path}/files ] && sudo mkdir -p ${playbooks_path}/files
+                  sudo cp /home/stack/bz2222624_patch/setup_rear_extra_vars.yaml ${playbooks_path}/files/
+                  [ -e ${playbooks_path}/tasks/main.yml ] && sudo mv ${playbooks_path}/tasks/main.yml ${playbooks_path}/tasks/main.yml_backup
+                  sudo cp /home/stack/bz2222624_patch/main.yml ${playbooks_path}/tasks
+              when: install.apply_patch_for_custom_backup_ip
+
         when: migrate|bool
 
 - name: Install monitoring tool
