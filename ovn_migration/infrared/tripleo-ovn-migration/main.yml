@@ -705,7 +705,7 @@
 - name: Revert OVN to OVS
   hosts: undercloud
   tasks:
-      - name: Starting migration block
+      - name: Starting revert block
         block:
 
             - name: Generate prepare-pinger script
@@ -833,7 +833,7 @@
             - name: Validate pinger results if exist
               shell:
                   set -o pipefail &&
-                  {{ ovn_migration_working_dir }}/validate-pinger.sh {{ validations_type }}
+                  {{ ovn_migration_working_dir }}/validate-pinger.sh {{ validations_type }} {{ validate_ipv6 }} {{ install.strict_downtime_check }}
                   > {{ validations_dir }}/validate-pinger.sh.log 2>&1
 
             - name: Run OVN network agents validation script
@@ -916,7 +916,7 @@
             - name: Run workload operations validation script
               shell:
                   set -o pipefail &&
-                  {{ ovn_migration_working_dir }}/validate-workload-operations.sh
+                  {{ ovn_migration_working_dir }}/validate-workload-operations.sh {{ validate_ipv6 }}
                   > {{ validations_dir }}/validate-workload-operations.sh.log 2>&1
               when: validate_vm_live_migration|bool or validate_vm_reboot|bool
 
