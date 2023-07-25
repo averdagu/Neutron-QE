@@ -232,6 +232,11 @@ subparsers:
                       help: Whether to ping VM during the VM live migration
                       default: True
 
+                  strict_downtime_check:
+                      type: Bool
+                      help: Whether to search  pinger output for longest continuous downtime or just check that workload VMs are responding at the end
+                      default: True
+
                   fetch_junit_xml:
                       type: Bool
                       help: Whether to fetch junit xml with validation results.

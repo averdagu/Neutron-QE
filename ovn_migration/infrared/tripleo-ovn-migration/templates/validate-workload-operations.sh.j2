@@ -20,11 +20,14 @@ server_user_name={{ server_user_name }}
 ovn_migration_dir={{ ovn_migration_working_dir }}
 validations_dir={{ validations_dir }}
 resources_type={{ resources_type  }}
-validate_ipv6={{ validate_ipv6 }}
+validate_ipv6=$2
 ping_during_vm_migration={{ ping_during_vm_migration }}
 ping_requests=3
 debug_hint="See details in connectivity_summary_file and $(basename $0).log."
 public_network={{ public_network }}
+
+# Printing overall status of VMs for a reference
+openstack server list
 
 openstack server list --long -c ID -c Name -c Host -f value | grep 'migration.*pinger' > /tmp/workload_servers
 servers_with_trunks=$(cat /tmp/workload_servers | grep 'migration.*pinger' | grep trunk | awk '{print $1}')
@@ -555,7 +558,8 @@ validate_vm_migration(){
   [ "$servers_for_migration" == "" ] && echo SKIPPED: No servers suitable for the test && return
   for server in $servers_for_migration; do
     echo server id = $server
-    echo_title "Status of server $server connectivity before VM migration test" >> $summary_file
+    [[ $test_name =~ trunk ]] && vm_type='trunk ' || vm_type=''
+    echo_title "Status of server $server connectivity before ${vm_type}VM migration test $2" >> $summary_file
     validate_external_ports_connectivity pre-check || return
     validate_internal_ports_connectivity pre-check || return
     host=$(openstack server show $server -c OS-EXT-SRV-ATTR:host -f value)
@@ -588,10 +592,10 @@ validate_vm_migration(){
       stop_vm_int_downtime_check
       echo >> $summary_file
     fi
-    echo_title "Overall connectivity status after VM migration test" >> $summary_file
+    echo_title "Overall connectivity status after ${vm_type}VM migration test $2" >> $summary_file
     validate_external_ports_connectivity status_only
     validate_internal_ports_connectivity status_only
-    echo_title "Status of server $server connectivity after VM migration test" >> $summary_file
+    echo_title "Status of server $server connectivity after ${vm_type}VM migration test $2" >> $summary_file
     validate_external_ports_connectivity post-check || return
     validate_internal_ports_connectivity post-check || return
     validate_leftovers_cleanup || return
@@ -640,7 +644,8 @@ validate_vm_reboot(){
     echo starting status = $start_status
     [ "$start_status" != "ACTIVE" ] && echo FAIL: Starting VM status is not ACTIVE. && return
     [ "$1" == "shelve" ] && reboot_scenario="shelve/unshelve" || reboot_scenario="stop/start"
-    echo_title "Status of server $server connectivity before VM $reboot_scenario test" >> $summary_file
+    [[ ${FUNCNAME[1]} =~ trunk ]] && vm_type='trunk ' || vm_type=''
+    echo_title "Status of server $server connectivity before ${vm_type}VM $reboot_scenario test" >> $summary_file
     validate_external_ports_connectivity pre-check || return
     validate_internal_ports_connectivity pre-check || return
     [ "$1" == "shelve" ] && stop_command="shelve" || stop_command="stop"
@@ -685,10 +690,10 @@ validate_vm_reboot(){
     # TODO add waiting loop
     echo Wait 40 seconds before staring validations to make sure all is ready
     sleep 40
-    echo_title "Overall connectivity status after VM $reboot_scenario test" >> $summary_file
+    echo_title "Overall connectivity status after ${vm_type}VM $reboot_scenario test" >> $summary_file
     validate_external_ports_connectivity status_only
     validate_internal_ports_connectivity status_only
-    echo_title "Status of server $server connectivity after VM $reboot_scenario test" >> $summary_file
+    echo_title "Status of server $server connectivity after ${vm_type}VM $reboot_scenario test" >> $summary_file
     validate_external_ports_connectivity post-check || return
     validate_internal_ports_connectivity post-check || return
   done
@@ -726,3 +731,6 @@ if [ "{{ validate_vm_shelve }}" == "True" ]; then
 fi
 
 echo Finished validation of workload operations
+
+# Printing overall status of VMs for a reference
+openstack server list

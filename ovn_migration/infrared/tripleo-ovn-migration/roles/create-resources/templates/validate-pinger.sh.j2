@@ -5,7 +5,8 @@ resources_type={{ resources_type }}
 server_user_name={{ server_user_name }}
 packet_loss_threshold={{ packet_loss_threshold }}
 validations_type=$1
-validate_ipv6={{ validate_ipv6 }}
+validate_ipv6=$2
+strict=$3
 validations_dir="{{ ovn_migration_working_dir }}/$validations_type"
 
 [ "{{ osp_major_version }}" -ge "17" ] && key=id_extra_keys || key=id_rsa
@@ -23,7 +24,7 @@ check_if_pinger_stopped(){
 
 validate(){
     [ ! -s {{ ovn_migration_working_dir }}/get_longest_continuous_downtime.py ] && echo "FAIL: script get_longest_continuous_downtime.py not found" && exit
-    # First we get whole output of the script just in order to get start/end in the log for a reference
+    # First we get whole output of the script just in order to get start/end in the log for a reference. Will be printed even if strict validation was not choosen.
     ping_result=$(python {{ ovn_migration_working_dir }}/get_longest_continuous_downtime.py $file)
     ping_result=$(echo $ping_result | awk '{print $1}')
     if [ "$ping_result" == "" ]; then
@@ -32,15 +33,29 @@ validate(){
 	return
     fi
 
-    if [ $ping_result -gt $packet_loss_threshold ]; then
-        status="${status} File $1: Continuous ping loss higher than $packet_loss_threshold packets detected ($ping_result packets), "
-        res=1
-	return
+    if [ "$strict" == "True" ]; then
+        if [ $ping_result -gt $packet_loss_threshold ]; then
+            status="${status} File $1: Continuous ping loss higher than $packet_loss_threshold packets detected ($ping_result packets), "
+            res=1
+	    return
+        fi
+        status="${status} File $1: Passed validation, "
     fi
-    status="${status} File $1: Passed validation, "
 }
 
-echo TEST: test_workload_vms_ipv4_downtime
+check_connectivity() {
+    address=$1
+    [[ "$address" =~ ":" ]] && ver=6
+    ping$ver -c 4 $address
+    if [ "$?" != "0" ]; then
+        status="${status} Address $1 is not responding!!!, "
+	res=1
+	return
+    fi
+    status="${status} Address $1 is responding, "
+}
+
+[ "$strict" == "True" ] && echo TEST: test_workload_vms_ipv4_downtime || echo TEST: test_workload_vms_ipv4_connectivity
 res=0
 status="INFO: "
 file_list=`ls $validations_dir/*ipv4_ping.out`
@@ -50,10 +65,17 @@ for file in $file_list; do
     check_if_pinger_stopped $file
     validate $file
 done
-[ "$res" == "0" ] && echo PASS: test_workload_vms_ipv4_downtime || echo FAIL: ipv4 downtime validation failed. $status
+if ! [ "$strict" == "True" ]; then
+    for ip in `cat {{ ovn_migration_working_dir }}/server_fips`; do
+        check_connectivity $ip
+    done
+    [ "$res" == "0" ] && echo PASS: test_workload_vms_ipv4_connectivity || echo FAIL: ipv4 connectivity check failed. $status
+else
+    [ "$res" == "0" ] && echo PASS: test_workload_vms_ipv4_downtime || echo FAIL: ipv4 downtime validation failed. $status
+fi
 
 if ! ([[ "$resources_type" == "normal_ext" ]] || [ "$resources_type" == "trunk_ext" ] || [[ "$resources_type" =~ "sriov_ext" ]]) && [ "$validate_ipv6" == "True" ]; then
-    echo TEST: test_workload_vms_ipv6_downtime
+    [ "$strict" == "True" ] && echo TEST: test_workload_vms_ipv6_downtime || echo TEST: test_workload_vms_ipv6_connectivity
     res=0
     status="INFO: "
     file_list=`ls $validations_dir/*ipv6_ping.out`
@@ -63,11 +85,31 @@ if ! ([[ "$resources_type" == "normal_ext" ]] || [ "$resources_type" == "trunk_e
         check_if_pinger_stopped $file
         validate $file
     done
-    [ "$res" == "0" ] && echo PASS: test_workload_vms_ipv6_downtime || echo FAIL: ipv6 downtime validation failed. $status
+    if ! [ "$strict" == "True" ]; then
+        for ip in `cat {{ ovn_migration_working_dir }}/server_ipv6_addresses`; do
+            check_connectivity $ip
+        done
+        [ "$res" == "0" ] && echo PASS: test_workload_vms_ipv6_connectivity || echo FAIL: ipv6 connectivity check failed. $status
+    else
+        [ "$res" == "0" ] && echo PASS: test_workload_vms_ipv6_downtime || echo FAIL: ipv6 downtime validation failed. $status
+    fi
 fi
 
+check_subport_connectivity() {
+   ips=$(timeout 10 ssh -i ~/.ssh/$key $server_user_name@$1 ls ping_*_output | sed 's/.*_\(.*\)_.*/\1/')
+   for ip in $ips; do
+       timeout 10 ssh -i ~/.ssh/$key $server_user_name@$1  "ping -c 4 $ip"
+       if [ "$?" != "0" ]; then
+	   status="${status} Address $ip is not responding (!!!) when pinging from $1, "
+           res=1
+           return
+       fi
+       status="${status} Address $1 is responding, "
+   done
+}
+
 if [[ "$resources_type" =~ "trunk" ]]; then
-    echo TEST: test_trunk_subports_downtime
+    [ "$strict" == "True" ] && echo TEST: test_trunk_subports_downtime || echo TEST: test_trunk_subports_connectivity
     res=0
     status="INFO: "
 
@@ -95,5 +137,12 @@ if [[ "$resources_type" =~ "trunk" ]]; then
         check_if_pinger_stopped $file quick
         validate $file
     done
-    [ "$res" == "0" ] && echo PASS: test_trunk_subports_downtime || echo FAIL: trunk subports downtime validation failed. $status
+    if ! [ "$strict" == "True" ]; then
+        for fip in `cat {{ ovn_migration_working_dir }}/trunk_vms_fips`; do
+            check_subport_connectivity $fip
+        done
+        [ "$res" == "0" ] && echo PASS: test_trunk_subports_connectivity || echo FAIL: trunk subports connectivity validation failed. $status
+    else
+        [ "$res" == "0" ] && echo PASS: test_trunk_subports_downtime || echo FAIL: trunk subports downtime validation failed. $status
+    fi
 fi
