@@ -14,6 +14,7 @@ openstack overcloud deploy \
 -e /home/stack/vlan_provider_network/network/network-environment.yaml \
 -e /home/stack/vlan_provider_network/roles/nodes-16.yaml \
 -e /home/stack/vlan_provider_network/l3_fip_qos.yaml \
+-e /home/stack/vlan_provider_network/floating_ip_port_forwarding.yaml \
 -e /home/stack/containers-prepare-parameter.yaml \
 -e /home/stack/vlan_provider_network/debug.yaml \
 -e /home/stack/vlan_provider_network/dns.yaml \
