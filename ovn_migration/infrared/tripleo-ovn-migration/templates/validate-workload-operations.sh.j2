@@ -27,7 +27,7 @@ debug_hint="See details in connectivity_summary_file and $(basename $0).log."
 public_network={{ public_network }}
 
 # Printing overall status of VMs for a reference
-openstack server list
+openstack server list --long
 
 openstack server list --long -c ID -c Name -c Host -f value | grep 'migration.*pinger' > /tmp/workload_servers
 servers_with_trunks=$(cat /tmp/workload_servers | grep 'migration.*pinger' | grep trunk | awk '{print $1}')
@@ -733,4 +733,4 @@ fi
 echo Finished validation of workload operations
 
 # Printing overall status of VMs for a reference
-openstack server list
+openstack server list --long
