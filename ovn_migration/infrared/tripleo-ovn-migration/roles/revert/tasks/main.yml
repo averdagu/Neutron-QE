@@ -52,3 +52,16 @@
     set -o pipefail &&
     {{ overcloud_deploy_ovs_script }} 2>&1 > {{ overcloud_deploy_ovs_script }}.log
   changed_when: true
+
+
+- name: Create run-revert script
+  template:
+      src: templates/run-revert-rewire.sh.j2
+      dest: "{{ ovn_migration_working_dir }}/run-revert-rewire.sh"
+      mode: 0755
+
+- name: Run run-revert script
+  shell:
+      set -o pipefail &&
+      {{ ovn_migration_working_dir }}/run-revert-rewire.sh
+      > {{ ovn_migration_working_dir }}/run-revert-rewire.sh.log 2>&1

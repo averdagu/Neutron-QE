@@ -1,0 +1,8 @@
+#!/bin/bash
+set -x
+
+if [ "{{ batched_migration_support }}" == "True"  ]; then
+  ansible-playbook -vv {{ playbooks_path }}/revert-rewire.yml -i /home/stack/hosts_for_migration
+else
+  ansible-playbook -vv {{ ovn_migration_working_dir }}/playbooks/revert-rewire.yml -i /home/stack/hosts_for_migration
+fi
