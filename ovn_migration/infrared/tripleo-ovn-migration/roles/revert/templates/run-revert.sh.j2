@@ -1,8 +1,5 @@
 #!/bin/bash
 set -x
 
-if [ "{{ batched_migration_support }}" == "True"  ]; then
-  ansible-playbook -vv {{ playbooks_path }}/revert.yml -i /home/stack/hosts_for_migration
-else
-  ansible-playbook -vv {{ ovn_migration_working_dir }}/playbooks/revert.yml -i /home/stack/hosts_for_migration
-fi
+export OVERCLOUD_OVS_REVERT_SCRIPT=/home/stack/overcloud-deploy-ovs.sh
+echo "y" | /usr/bin/ovn_migration.sh revert
